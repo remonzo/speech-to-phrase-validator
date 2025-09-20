@@ -1,14 +1,7 @@
 FROM python:3.11-alpine
 
-# Install system dependencies and bashio
+# Install minimal system dependencies
 RUN apk add --no-cache \
-    sqlite \
-    sqlite-dev \
-    gcc \
-    g++ \
-    musl-dev \
-    libffi-dev \
-    openssl-dev \
     bash \
     curl \
     jq
@@ -16,34 +9,24 @@ RUN apk add --no-cache \
 # Set working directory
 WORKDIR /app
 
-# Install bashio for Home Assistant integration
-RUN pip install --no-cache-dir bashio
-
-# Copy requirements first for better caching
+# Copy and install Python dependencies
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
+# Copy application code
 COPY src/ ./src/
 COPY run.sh ./
+RUN chmod +x run.sh
 
-# Make run script executable
-RUN chmod a+x /app/run.sh
-
-# Create data directory
+# Create directories
 RUN mkdir -p /data
 
-# Labels
-LABEL \
-  io.hass.version="VERSION" \
-  io.hass.type="addon" \
-  io.hass.name="Speech-to-Phrase Validator" \
-  io.hass.description="Tool di validazione e ottimizzazione per Speech-to-Phrase" \
-  io.hass.arch="armhf|aarch64|amd64|armv7|i386"
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8099/api/health || exit 1
 
 # Expose port
 EXPOSE 8099
 
-CMD ["/app/run.sh"]
+# Run
+CMD ["./run.sh"]

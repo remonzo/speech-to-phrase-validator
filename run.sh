@@ -1,14 +1,17 @@
 #!/bin/bash
 
-# Get configuration from bashio if available, otherwise use defaults
-if command -v bashio >/dev/null 2>&1; then
-    LOG_LEVEL=$(bashio::config 'log_level' 'info')
-    MODELS_PATH=$(bashio::config 'speech_to_phrase_models_path' '/share/speech-to-phrase/models')
-    TRAIN_PATH=$(bashio::config 'speech_to_phrase_train_path' '/share/speech-to-phrase/train')
-    TOOLS_PATH=$(bashio::config 'speech_to_phrase_tools_path' '/share/speech-to-phrase/tools')
-    ENABLE_CLI=$(bashio::config 'enable_cli' 'false')
+# Read configuration from options.json (Home Assistant addon config)
+CONFIG_PATH="/data/options.json"
+
+# Parse configuration with fallback defaults
+if [ -f "$CONFIG_PATH" ]; then
+    LOG_LEVEL=$(jq -r '.log_level // "info"' "$CONFIG_PATH")
+    MODELS_PATH=$(jq -r '.speech_to_phrase_models_path // "/share/speech-to-phrase/models"' "$CONFIG_PATH")
+    TRAIN_PATH=$(jq -r '.speech_to_phrase_train_path // "/share/speech-to-phrase/train"' "$CONFIG_PATH")
+    TOOLS_PATH=$(jq -r '.speech_to_phrase_tools_path // "/share/speech-to-phrase/tools"' "$CONFIG_PATH")
+    ENABLE_CLI=$(jq -r '.enable_cli // false' "$CONFIG_PATH")
 else
-    # Fallback defaults if bashio not available
+    # Fallback defaults if config not available
     LOG_LEVEL="${LOG_LEVEL:-info}"
     MODELS_PATH="${MODELS_PATH:-/share/speech-to-phrase/models}"
     TRAIN_PATH="${TRAIN_PATH:-/share/speech-to-phrase/train}"
