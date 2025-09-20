@@ -1,23 +1,28 @@
-FROM python:3.11-alpine
+ARG BUILD_FROM=ghcr.io/home-assistant/base:3.18
+FROM $BUILD_FROM
 
 # Force rebuild by changing this arg when needed
-ARG BUILD_DATE=2024-09-20-v3
-ARG BUILD_VERSION=1.0.1
+ARG BUILD_DATE=2024-09-20-v4
+ARG BUILD_VERSION=1.0.2
 
-# Set working directory early
+# Set working directory
 WORKDIR /app
 
-# Debug info
-RUN echo "Building Speech-to-Phrase Validator v${BUILD_VERSION} on ${BUILD_DATE}"
-
-# Install system dependencies
+# Install Python and dependencies
 RUN apk add --no-cache \
-    bash \
+    python3 \
+    python3-dev \
+    py3-pip \
     curl \
     jq \
+    bash \
     && rm -rf /var/cache/apk/*
 
-# Copy requirements and install Python dependencies
+# Create symlinks for compatibility
+RUN ln -sf /usr/bin/python3 /usr/bin/python \
+    && ln -sf /usr/bin/pip3 /usr/bin/pip
+
+# Copy requirements and install
 COPY requirements.txt ./
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
@@ -26,25 +31,14 @@ RUN pip install --no-cache-dir --upgrade pip \
 COPY src/ ./src/
 COPY startup.py ./
 COPY simple_server.py ./
-COPY entrypoint.sh ./
 
 # Create required directories
 RUN mkdir -p /data /share
 
-# Test Python execution and fix permissions
+# Test installation
 RUN python --version \
-    && which python \
-    && ls -la $(which python) \
-    && chmod +x $(which python) \
-    && python -c "print('Python test successful')"
-
-# Set proper ownership and permissions for everything
-RUN chmod -R 755 /app \
-    && chown -R root:root /app \
-    && chmod -R 755 /usr/local/bin/ \
-    && chmod +x /app/entrypoint.sh \
-    && ls -la /usr/local/bin/python* \
-    && ls -la /app/entrypoint.sh
+    && python -c "import fastapi; print(f'FastAPI {fastapi.__version__}')" \
+    && python -c "import uvicorn; print('Uvicorn OK')"
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
@@ -53,5 +47,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 # Expose port
 EXPOSE 8099
 
-# Use shell script as entrypoint for better compatibility
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Use the startup script directly
+CMD ["python", "/app/startup.py"]
