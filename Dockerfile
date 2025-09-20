@@ -2,8 +2,8 @@ ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.20
 FROM $BUILD_FROM
 
 # Force rebuild by changing this arg when needed
-ARG BUILD_DATE=2024-09-20-v12
-ARG BUILD_VERSION=1.1.1
+ARG BUILD_DATE=2024-09-20-v13
+ARG BUILD_VERSION=1.1.2
 
 # Install Python and dependencies
 RUN apk add --no-cache \
@@ -49,6 +49,10 @@ RUN echo '#!/bin/bash' > /app/run.sh \
     && echo 'exec python /app/startup.py "$@"' >> /app/run.sh \
     && chmod +x /app/run.sh
 
+# Create symlink for HA to find Python in expected location
+RUN ln -sf /app/venv/bin/python /usr/local/bin/python \
+    && chmod +x /usr/local/bin/python
+
 # Test installation in virtual environment
 RUN . /app/venv/bin/activate \
     && python --version \
@@ -57,7 +61,7 @@ RUN . /app/venv/bin/activate \
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8099/health || exit 1
+    CMD curl -f http://localhost:8099/api/health || exit 1
 
 # Expose port
 EXPOSE 8099
