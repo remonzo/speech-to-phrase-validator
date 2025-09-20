@@ -1,7 +1,6 @@
-ARG BUILD_FROM=ghcr.io/home-assistant/base-python:3.11-alpine3.18
-FROM $BUILD_FROM
+FROM python:3.11-alpine
 
-# Install system dependencies
+# Install system dependencies and bashio
 RUN apk add --no-cache \
     sqlite \
     sqlite-dev \
@@ -10,11 +9,15 @@ RUN apk add --no-cache \
     musl-dev \
     libffi-dev \
     openssl-dev \
-    cargo \
-    rust
+    bash \
+    curl \
+    jq
 
 # Set working directory
 WORKDIR /app
+
+# Install bashio for Home Assistant integration
+RUN pip install --no-cache-dir bashio
 
 # Copy requirements first for better caching
 COPY requirements.txt .
@@ -28,6 +31,9 @@ COPY run.sh ./
 
 # Make run script executable
 RUN chmod a+x /app/run.sh
+
+# Create data directory
+RUN mkdir -p /data
 
 # Labels
 LABEL \
