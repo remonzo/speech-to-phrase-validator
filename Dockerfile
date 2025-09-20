@@ -2,8 +2,8 @@ ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.20
 FROM $BUILD_FROM
 
 # Force rebuild by changing this arg when needed
-ARG BUILD_DATE=2024-09-20-v11
-ARG BUILD_VERSION=1.1.0
+ARG BUILD_DATE=2024-09-20-v12
+ARG BUILD_VERSION=1.1.1
 
 # Install Python and dependencies
 RUN apk add --no-cache \
@@ -18,6 +18,9 @@ RUN apk add --no-cache \
 # Create symlinks for Python
 RUN ln -sf /usr/bin/python3 /usr/bin/python \
     && ln -sf /usr/bin/pip3 /usr/bin/pip
+
+# Fix permissions for init and common binaries
+RUN chmod +x /init /usr/bin/python3 /usr/bin/python /bin/bash /bin/sh || true
 
 # Set working directory
 WORKDIR /app
