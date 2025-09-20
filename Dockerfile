@@ -16,7 +16,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY src/ ./src/
 COPY run.sh ./
-RUN chmod +x run.sh
+COPY run_simple.sh ./
+COPY test_app.py ./
+RUN chmod +x run.sh run_simple.sh
 
 # Create directories
 RUN mkdir -p /data
@@ -29,4 +31,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 EXPOSE 8099
 
 # Run
-CMD ["./run.sh"]
+CMD ["./run_simple.sh"]
