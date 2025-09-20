@@ -1,5 +1,5 @@
 name: "Speech-to-Phrase Validator"
-version: "0.2.0"
+version: "0.2.1"
 slug: "speech_to_phrase_validator"
 description: "Tool di validazione e ottimizzazione per Speech-to-Phrase che aiuta a verificare la riconoscibilità di parole ed entità"
 url: "https://github.com/yourusername/speech-to-phrase-validator"
