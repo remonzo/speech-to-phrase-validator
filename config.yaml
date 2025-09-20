@@ -1,7 +1,6 @@
 name: "Speech-to-Phrase Validator"
-version: "1.0.5"
+version: "1.0.6"
 slug: "stp_validator"
-image: "homeassistant/amd64-addon-configurator"
 description: "Tool di validazione e ottimizzazione per Speech-to-Phrase che aiuta a verificare la riconoscibilità di parole ed entità"
 url: "https://github.com/yourusername/speech-to-phrase-validator"
 arch:
