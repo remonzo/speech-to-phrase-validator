@@ -199,7 +199,7 @@ Contributi, issue e feature request sono benvenuti!
 
 Per segnalare bug o richiedere supporto:
 
-1. Controlla i [problemi noti](https://github.com/yourusername/speech-to-phrase-validator/issues)
+1. Controlla i [problemi noti](https://github.com/remonzo/speech-to-phrase-validator/issues)
 2. Apri un nuovo issue con:
    - Versione Home Assistant
    - Versione Speech-to-Phrase
@@ -208,7 +208,7 @@ Per segnalare bug o richiedere supporto:
 
 ## 📚 Documentazione Correlata
 
-- [Speech-to-Phrase](https://github.com/rhasspy/speech-to-phrase)
+- [Speech-to-Phrase](https://github.com/OHF-Voice/speech-to-phrase)
 - [Home Assistant Add-on Development](https://developers.home-assistant.io/docs/add-ons/)
 - [Kaldi ASR](https://kaldi-asr.org/)
 - [Phonetisaurus](https://github.com/AdolfVonKleist/Phonetisaurus)
