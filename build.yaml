@@ -1,7 +1,9 @@
 build_from:
-  aarch64: ghcr.io/home-assistant/base-python:3.11-alpine3.18
-  amd64: ghcr.io/home-assistant/base-python:3.11-alpine3.18
-  armhf: ghcr.io/home-assistant/base-python:3.11-alpine3.18
-  armv7: ghcr.io/home-assistant/base-python:3.11-alpine3.18
-  i386: ghcr.io/home-assistant/base-python:3.11-alpine3.18
-args: {}
+  aarch64: python:3.11-alpine
+  amd64: python:3.11-alpine
+  armhf: python:3.11-alpine
+  armv7: python:3.11-alpine
+  i386: python:3.11-alpine
+args:
+  BUILD_DATE: "2024-09-20-v2"
+  BUILD_VERSION: "1.0.0"

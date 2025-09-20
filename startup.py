@@ -226,7 +226,11 @@ def start_application(config):
 
         except Exception as e2:
             logger.error(f"❌ Fallback also failed: {e2}")
-            raise
+            logger.info("🔄 Trying ultra-simple HTTP server...")
+
+            # Ultra-simple fallback
+            import subprocess
+            subprocess.run([sys.executable, "/app/simple_server.py"])
 
 if __name__ == "__main__":
     main()
