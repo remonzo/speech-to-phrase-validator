@@ -17,4 +17,5 @@ addons:
     startup: application
     boot: manual
     url: "https://github.com/remonzo/speech-to-phrase-validator"
-    image: "ghcr.io/remonzo/addon-speech-to-phrase-validator-{arch}"
+    # Build locally - no pre-built image needed
+    # image: "ghcr.io/remonzo/addon-speech-to-phrase-validator-{arch}"

@@ -36,4 +36,5 @@ schema:
   speech_to_phrase_train_path: str
   speech_to_phrase_tools_path: str
   enable_cli: bool
-image: "ghcr.io/remonzo/addon-speech-to-phrase-validator-{arch}"
+# Build image locally instead of pulling from registry
+# image: "ghcr.io/remonzo/addon-speech-to-phrase-validator-{arch}"
