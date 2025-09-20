@@ -1,0 +1,20 @@
+# Repository configuration for Home Assistant Add-on Store
+
+name: "Speech-to-Phrase Validator Add-ons"
+url: "https://github.com/remonzo/speech-to-phrase-validator"
+maintainer: "remonzo <remonzo@github.com>"
+
+addons:
+  speech_to_phrase_validator:
+    name: "Speech-to-Phrase Validator"
+    description: "Strumento di validazione e ottimizzazione per Speech-to-Phrase"
+    arch:
+      - amd64
+      - aarch64
+      - armhf
+      - armv7
+      - i386
+    startup: application
+    boot: manual
+    url: "https://github.com/remonzo/speech-to-phrase-validator"
+    image: "ghcr.io/remonzo/addon-speech-to-phrase-validator-{arch}"

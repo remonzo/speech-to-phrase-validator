@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech-to-Phrase Validator</title>
+    <link href="/static/css/style.css" rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    <script src="/static/js/app.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎤 Speech-to-Phrase Validator</h1>
+            <p class="subtitle">Ottimizza la riconoscibilità delle tue entità Home Assistant</p>
+        </header>
+
+        {% if not has_validator %}
+        <div class="alert alert-error">
+            ⚠️ Validator non inizializzato. Verifica che Speech-to-Phrase sia installato e configurato.
+        </div>
+        {% else %}
+
+        <!-- Model Selection -->
+        <section class="card">
+            <h2>🔧 Configurazione Modello</h2>
+            {% if models %}
+            <div class="model-selector">
+                <label for="model-select">Modello attivo:</label>
+                <select id="model-select" onchange="selectModel(this.value)">
+                    {% for model in models %}
+                    <option value="{{ model.id }}" {% if model.is_current %}selected{% endif %}>
+                        {{ model.description }} ({{ model.language }})
+                    </option>
+                    {% endfor %}
+                </select>
+                <div class="model-info">
+                    {% if current_model %}
+                    <span class="badge badge-success">{{ current_model.type }}</span>
+                    <span class="badge">{{ current_model.language }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-warning">
+                Nessun modello trovato. Installa Speech-to-Phrase e scarica almeno un modello.
+            </div>
+            {% endif %}
+        </section>
+
+        <!-- Word Validation -->
+        <section class="card">
+            <h2>🔍 Validazione Parola</h2>
+            <div class="word-validator">
+                <div class="input-group">
+                    <input type="text" id="word-input" placeholder="Inserisci una parola..."
+                           onkeyup="if(event.key==='Enter') validateWord()">
+                    <button onclick="validateWord()" class="btn btn-primary">Valida</button>
+                </div>
+                <div id="word-result" class="result-area"></div>
+            </div>
+        </section>
+
+        <!-- Entity Validation -->
+        <section class="card">
+            <h2>🏠 Validazione Entità</h2>
+            <div class="entity-validator">
+                <div class="input-group">
+                    <input type="text" id="entity-input" placeholder="Nome entità (es: condizionatore_soggiorno)"
+                           onkeyup="if(event.key==='Enter') validateEntity()">
+                    <button onclick="validateEntity()" class="btn btn-primary">Valida Entità</button>
+                </div>
+                <div id="entity-result" class="result-area"></div>
+            </div>
+        </section>
+
+        <!-- Bulk Validation -->
+        <section class="card">
+            <h2>📋 Validazione Multipla</h2>
+            <div class="bulk-validator">
+                <textarea id="entities-input" rows="6"
+                          placeholder="Inserisci una lista di entità, una per riga:&#10;condizionatore_soggiorno&#10;luce_cucina&#10;termostato_bagno"></textarea>
+                <button onclick="validateEntities()" class="btn btn-primary">Valida Tutte</button>
+                <div id="bulk-result" class="result-area"></div>
+            </div>
+        </section>
+
+        <!-- Statistics -->
+        <section class="card">
+            <h2>📊 Statistiche Modello</h2>
+            <div id="stats-area">
+                <button onclick="loadStats()" class="btn btn-secondary">Carica Statistiche</button>
+                <div id="stats-result"></div>
+            </div>
+        </section>
+
+        {% endif %}
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loading" class="loading hidden">
+        <div class="spinner"></div>
+        <p>Elaborazione...</p>
+    </div>
+</body>
+</html>

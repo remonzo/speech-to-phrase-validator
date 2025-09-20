@@ -1,0 +1,39 @@
+name: "Speech-to-Phrase Validator"
+version: "0.1.0"
+slug: "speech_to_phrase_validator"
+description: "Tool di validazione e ottimizzazione per Speech-to-Phrase che aiuta a verificare la riconoscibilità di parole ed entità"
+url: "https://github.com/yourusername/speech-to-phrase-validator"
+arch:
+  - amd64
+  - aarch64
+  - armhf
+  - armv7
+  - i386
+startup: application
+boot: manual
+ports:
+  8099/tcp: 8099
+ports_description:
+  8099/tcp: "Web interface"
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:microphone-settings
+panel_title: "STP Validator"
+map:
+  - type: share
+    read_only: false
+  - type: homeassistant_config
+    read_only: true
+options:
+  log_level: info
+  speech_to_phrase_models_path: "/share/speech-to-phrase/models"
+  speech_to_phrase_train_path: "/share/speech-to-phrase/train"
+  speech_to_phrase_tools_path: "/share/speech-to-phrase/tools"
+  enable_cli: false
+schema:
+  log_level: list(trace|debug|info|notice|warning|error|fatal)
+  speech_to_phrase_models_path: str
+  speech_to_phrase_train_path: str
+  speech_to_phrase_tools_path: str
+  enable_cli: bool
+image: "ghcr.io/remonzo/addon-speech-to-phrase-validator-{arch}"

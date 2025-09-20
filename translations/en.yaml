@@ -1,0 +1,16 @@
+configuration:
+  log_level:
+    name: "Log Level"
+    description: "Set the logging level for the add-on"
+  speech_to_phrase_models_path:
+    name: "Speech-to-Phrase Models Path"
+    description: "Path to Speech-to-Phrase models directory (usually /share/speech-to-phrase/models)"
+  speech_to_phrase_train_path:
+    name: "Speech-to-Phrase Train Path"
+    description: "Path to Speech-to-Phrase training directory (usually /share/speech-to-phrase/train)"
+  speech_to_phrase_tools_path:
+    name: "Speech-to-Phrase Tools Path"
+    description: "Path to Speech-to-Phrase tools directory (usually /share/speech-to-phrase/tools)"
+  enable_cli:
+    name: "Enable CLI Tools"
+    description: "Enable command line interface tools for advanced users"
