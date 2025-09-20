@@ -1,9 +1,9 @@
-ARG BUILD_FROM=homeassistant/amd64-base:3.19
+ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.20
 FROM $BUILD_FROM
 
 # Force rebuild by changing this arg when needed
-ARG BUILD_DATE=2024-09-20-v9
-ARG BUILD_VERSION=1.0.8
+ARG BUILD_DATE=2024-09-20-v10
+ARG BUILD_VERSION=1.0.9
 
 # Install Python and dependencies
 RUN apk add --no-cache \
