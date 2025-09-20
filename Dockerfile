@@ -2,8 +2,8 @@ ARG BUILD_FROM=ghcr.io/home-assistant/base:3.18
 FROM $BUILD_FROM
 
 # Force rebuild by changing this arg when needed
-ARG BUILD_DATE=2024-09-20-v4
-ARG BUILD_VERSION=1.0.2
+ARG BUILD_DATE=2024-09-20-v5
+ARG BUILD_VERSION=1.0.3
 
 # Set working directory
 WORKDIR /app
@@ -22,10 +22,15 @@ RUN apk add --no-cache \
 RUN ln -sf /usr/bin/python3 /usr/bin/python \
     && ln -sf /usr/bin/pip3 /usr/bin/pip
 
-# Copy requirements and install
+# Create virtual environment and install dependencies
 COPY requirements.txt ./
-RUN pip install --no-cache-dir --upgrade pip \
+RUN python3 -m venv /opt/venv \
+    && . /opt/venv/bin/activate \
+    && pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
+
+# Add virtual environment to PATH
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy application files
 COPY src/ ./src/
@@ -35,8 +40,9 @@ COPY simple_server.py ./
 # Create required directories
 RUN mkdir -p /data /share
 
-# Test installation
-RUN python --version \
+# Test installation in virtual environment
+RUN . /opt/venv/bin/activate \
+    && python --version \
     && python -c "import fastapi; print(f'FastAPI {fastapi.__version__}')" \
     && python -c "import uvicorn; print('Uvicorn OK')"
 
@@ -47,5 +53,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 # Expose port
 EXPOSE 8099
 
-# Use the startup script directly
-CMD ["python", "/app/startup.py"]
+# Use the startup script with virtual environment
+CMD ["/opt/venv/bin/python", "/app/startup.py"]
