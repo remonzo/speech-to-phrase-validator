@@ -1,9 +1,9 @@
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.20
+ARG BUILD_FROM
 FROM $BUILD_FROM
 
 # Force rebuild by changing this arg when needed
-ARG BUILD_DATE=2024-09-20-v13
-ARG BUILD_VERSION=1.1.2
+ARG BUILD_DATE=2024-09-20-v14
+ARG BUILD_VERSION=1.2.0
 
 # Install Python and dependencies
 RUN apk add --no-cache \
@@ -19,9 +19,6 @@ RUN apk add --no-cache \
 RUN ln -sf /usr/bin/python3 /usr/bin/python \
     && ln -sf /usr/bin/pip3 /usr/bin/pip
 
-# Fix permissions for init and common binaries
-RUN chmod +x /init /usr/bin/python3 /usr/bin/python /bin/bash /bin/sh || true
-
 # Set working directory
 WORKDIR /app
 
@@ -32,9 +29,6 @@ RUN python3 -m venv /app/venv \
     && pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# Add virtual environment to PATH
-ENV PATH="/app/venv/bin:$PATH"
-
 # Copy application files
 COPY src/ ./src/
 COPY startup.py ./
@@ -43,21 +37,15 @@ COPY simple_server.py ./
 # Create required directories
 RUN mkdir -p /data /share
 
-# Create a simple wrapper script that uses the virtual environment
-RUN echo '#!/bin/bash' > /app/run.sh \
-    && echo 'source /app/venv/bin/activate' >> /app/run.sh \
-    && echo 'exec python /app/startup.py "$@"' >> /app/run.sh \
-    && chmod +x /app/run.sh
-
-# Create symlink for HA to find Python in expected location
-RUN ln -sf /app/venv/bin/python /usr/local/bin/python \
-    && chmod +x /usr/local/bin/python
-
 # Test installation in virtual environment
 RUN . /app/venv/bin/activate \
     && python --version \
     && python -c "import fastapi; print('FastAPI OK')" \
     && python -c "import uvicorn; print('Uvicorn OK')"
+
+# Create startup script in standard location
+COPY run.sh /
+RUN chmod a+x /run.sh
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
@@ -66,5 +54,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 # Expose port
 EXPOSE 8099
 
-# Use bash directly to avoid tini issues
-CMD ["/bin/bash", "/app/run.sh"]
+# Standard Home Assistant addon structure
+CMD ["/run.sh"]
