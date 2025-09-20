@@ -2,8 +2,8 @@ ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.20
 FROM $BUILD_FROM
 
 # Force rebuild by changing this arg when needed
-ARG BUILD_DATE=2024-09-20-v10
-ARG BUILD_VERSION=1.0.9
+ARG BUILD_DATE=2024-09-20-v11
+ARG BUILD_VERSION=1.1.0
 
 # Install Python and dependencies
 RUN apk add --no-cache \
@@ -22,10 +22,15 @@ RUN ln -sf /usr/bin/python3 /usr/bin/python \
 # Set working directory
 WORKDIR /app
 
-# Copy requirements and install dependencies
+# Copy requirements and create virtual environment
 COPY requirements.txt ./
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir --break-system-packages -r requirements.txt
+RUN python3 -m venv /app/venv \
+    && . /app/venv/bin/activate \
+    && pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
+
+# Add virtual environment to PATH
+ENV PATH="/app/venv/bin:$PATH"
 
 # Copy application files
 COPY src/ ./src/
@@ -35,15 +40,17 @@ COPY simple_server.py ./
 # Create required directories
 RUN mkdir -p /data /share
 
-# Create a simple wrapper script that bypasses tini issues
+# Create a simple wrapper script that uses the virtual environment
 RUN echo '#!/bin/bash' > /app/run.sh \
-    && echo 'exec python3 /app/startup.py "$@"' >> /app/run.sh \
+    && echo 'source /app/venv/bin/activate' >> /app/run.sh \
+    && echo 'exec python /app/startup.py "$@"' >> /app/run.sh \
     && chmod +x /app/run.sh
 
-# Test installation
-RUN python3 --version \
-    && python3 -c "import fastapi; print('FastAPI OK')" \
-    && python3 -c "import uvicorn; print('Uvicorn OK')"
+# Test installation in virtual environment
+RUN . /app/venv/bin/activate \
+    && python --version \
+    && python -c "import fastapi; print('FastAPI OK')" \
+    && python -c "import uvicorn; print('Uvicorn OK')"
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
