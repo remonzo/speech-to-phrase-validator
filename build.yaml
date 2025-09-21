@@ -5,5 +5,5 @@ build_from:
   armv7: ghcr.io/home-assistant/armv7-base:3.20
   i386: ghcr.io/home-assistant/i386-base:3.20
 args:
-  BUILD_DATE: "2024-09-20-v16"
-  BUILD_VERSION: "1.2.2"
+  BUILD_DATE: "2024-09-20-v17"
+  BUILD_VERSION: "1.2.3"
