@@ -2,6 +2,7 @@
 
 import os
 import logging
+import yaml
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 
@@ -29,6 +30,18 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 _LOGGER = logging.getLogger(__name__)
+
+def get_version() -> str:
+    """Read version from config.yaml."""
+    try:
+        config_path = Path(__file__).parent.parent.parent / "config.yaml"
+        if config_path.exists():
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f)
+                return config.get('version', '1.6.4')
+    except Exception as e:
+        _LOGGER.warning(f"Could not read version from config.yaml: {e}")
+    return "1.6.4"  # fallback
 
 # Configurazione da variabili d'ambiente
 MODELS_PATH = os.getenv("STP_MODELS_PATH", "/share/speech-to-phrase/models")
@@ -141,7 +154,8 @@ async def home(request: Request):
         "models": models,
         "current_model": current_model,
         "has_validator": validator is not None,
-        "ingress_path": ingress_path
+        "ingress_path": ingress_path,
+        "version": get_version()
     })
 
 
