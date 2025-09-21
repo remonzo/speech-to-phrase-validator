@@ -1,5 +1,5 @@
 name: "Speech-to-Phrase Validator"
-version: "1.5.7"
+version: "1.5.8"
 slug: "stp_validator"
 description: "Tool di validazione e ottimizzazione per Speech-to-Phrase che aiuta a verificare la riconoscibilità di parole ed entità"
 url: "https://github.com/remonzo/speech-to-phrase-validator"
@@ -29,7 +29,7 @@ options:
   log_level: info
   speech_to_phrase_models_path: "/share/speech-to-phrase/train"
   speech_to_phrase_train_path: "/share/speech-to-phrase/train"
-  speech_to_phrase_tools_path: "/share/speech-to-phrase/tools"
+  speech_to_phrase_tools_path: ""
   enable_cli: false
 schema:
   log_level: list(trace|debug|info|notice|warning|error|fatal)
