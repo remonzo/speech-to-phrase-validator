@@ -32,13 +32,21 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('🔧 Speech-to-Phrase Validator JavaScript loaded!');
     console.log('DOM loaded, setting up theme');
     const savedTheme = localStorage.getItem('theme');
+    const version = '1.6.6'; // Current version
+    const savedVersion = localStorage.getItem('app-version');
 
-    console.log('Saved theme:', savedTheme);
+    console.log('Saved theme:', savedTheme, 'Version:', version, 'Saved version:', savedVersion);
 
-    // Dark theme is now default, only apply light theme if explicitly requested
-    if (savedTheme === 'light') {
+    // Reset theme to dark if version changed or no version saved
+    if (savedVersion !== version) {
+        console.log('Version changed or first load - resetting to dark theme');
+        localStorage.removeItem('theme');
+        localStorage.setItem('app-version', version);
+        document.body.classList.remove('light-theme');
+        console.log('Forced dark theme reset');
+    } else if (savedTheme === 'light') {
         document.body.classList.add('light-theme');
-        console.log('Applied light theme on load');
+        console.log('Applied saved light theme');
     } else {
         console.log('Using default dark theme');
     }
