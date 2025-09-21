@@ -652,7 +652,7 @@ function displayEntityPrediction(result) {
 }
 
 // Predictor statistics
-async function loadPredictorStats() {
+window.loadPredictorStats = async function() {
     console.log('📊 loadPredictorStats function called');
     try {
         console.log('Calling /predict/stats API...');

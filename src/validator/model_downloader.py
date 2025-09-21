@@ -505,10 +505,23 @@ class SpeechToPhraseModelDownloader:
         # Scarica G2P model (opzionale)
         if "g2p.fst" in model_info:
             g2p_url = model_info["g2p.fst"]
-            g2p_path = model_path / "g2p.fst.gz"
+            g2p_gz_path = model_path / "g2p.fst.gz"
+            g2p_extracted_path = model_path / "g2p.fst"
 
-            if await self.download_file(g2p_url, g2p_path):
+            if await self.download_file(g2p_url, g2p_gz_path):
                 _LOGGER.info(f"G2P model downloaded for {model_id}")
+
+                # Estrai il file .gz
+                try:
+                    with gzip.open(g2p_gz_path, 'rb') as f_in:
+                        with open(g2p_extracted_path, 'wb') as f_out:
+                            f_out.write(f_in.read())
+                    _LOGGER.info(f"G2P model extracted: {g2p_extracted_path}")
+
+                    # Rimuovi file .gz dopo estrazione
+                    g2p_gz_path.unlink()
+                except Exception as e:
+                    _LOGGER.warning(f"Failed to extract G2P model: {e}")
             else:
                 _LOGGER.warning(f"G2P model download failed for {model_id} (non-critical)")
 
@@ -531,9 +544,9 @@ class SpeechToPhraseModelDownloader:
         }
 
         # Aggiungi info G2P se disponibile
-        g2p_path = model_path / "g2p.fst.gz"
+        g2p_path = model_path / "g2p.fst"
         if g2p_path.exists():
-            model_info_data["files"]["g2p.fst.gz"] = {
+            model_info_data["files"]["g2p.fst"] = {
                 "size": g2p_path.stat().st_size,
                 "hash": self.calculate_file_hash(g2p_path)
             }
