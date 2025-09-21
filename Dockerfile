@@ -43,9 +43,8 @@ RUN . /app/venv/bin/activate \
     && python -c "import fastapi; print('FastAPI OK')" \
     && python -c "import uvicorn; print('Uvicorn OK')"
 
-# Create startup script in standard location
-COPY run.sh /
-RUN chmod a+x /run.sh
+# Copy rootfs for s6 services
+COPY rootfs /
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
@@ -54,5 +53,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 # Expose port
 EXPOSE 8099
 
-# Standard Home Assistant addon structure
-CMD ["/run.sh"]
+# Home Assistant manages the startup - no CMD needed
