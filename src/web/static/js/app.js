@@ -4,24 +4,26 @@
 function toggleTheme() {
     console.log('Toggle theme function called');
     const body = document.body;
-    const isDark = body.classList.contains('dark-theme');
+    const isLight = body.classList.contains('light-theme');
 
-    console.log('Current dark theme:', isDark);
+    console.log('Current light theme:', isLight);
 
-    if (isDark) {
-        body.classList.remove('dark-theme');
+    if (isLight) {
+        // Switch to dark (default)
+        body.classList.remove('light-theme');
+        localStorage.setItem('theme', 'dark');
+        console.log('Switched to dark theme (default)');
+    } else {
+        // Switch to light
+        body.classList.add('light-theme');
         localStorage.setItem('theme', 'light');
         console.log('Switched to light theme');
-    } else {
-        body.classList.add('dark-theme');
-        localStorage.setItem('theme', 'dark');
-        console.log('Switched to dark theme');
     }
 
     // Update button text
     const button = document.getElementById('theme-toggle');
     if (button) {
-        button.textContent = isDark ? '🌓 Tema' : '🌓 Tema';
+        button.textContent = isLight ? '🌙 Scuro' : '☀️ Chiaro';
     }
 }
 
@@ -30,13 +32,22 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('🔧 Speech-to-Phrase Validator JavaScript loaded!');
     console.log('DOM loaded, setting up theme');
     const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-    console.log('Saved theme:', savedTheme, 'Prefers dark:', prefersDark);
+    console.log('Saved theme:', savedTheme);
 
-    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-        document.body.classList.add('dark-theme');
-        console.log('Applied dark theme on load');
+    // Dark theme is now default, only apply light theme if explicitly requested
+    if (savedTheme === 'light') {
+        document.body.classList.add('light-theme');
+        console.log('Applied light theme on load');
+    } else {
+        console.log('Using default dark theme');
+    }
+
+    // Update button text based on current theme
+    const button = document.getElementById('theme-toggle');
+    if (button) {
+        const isLight = document.body.classList.contains('light-theme');
+        button.textContent = isLight ? '🌙 Scuro' : '☀️ Chiaro';
     }
 
     // Set up theme toggle button

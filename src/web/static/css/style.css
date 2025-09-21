@@ -1,50 +1,8 @@
 /* Speech-to-Phrase Validator Styles */
 
+/* Apply dark theme by default - better for this context */
 :root {
-    --primary-color: #007bff;
-    --success-color: #28a745;
-    --warning-color: #ffc107;
-    --danger-color: #dc3545;
-    --info-color: #17a2b8;
-    --light-color: #f8f9fa;
-    --dark-color: #343a40;
     --border-radius: 8px;
-    --box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-
-    /* Light theme colors */
-    --bg-primary: #f5f5f5;
-    --bg-secondary: #ffffff;
-    --text-primary: #343a40;
-    --text-secondary: #6c757d;
-    --border-color: #e9ecef;
-    --card-bg: #ffffff;
-    --input-bg: #ffffff;
-}
-
-/* Dark theme colors */
-@media (prefers-color-scheme: dark), .dark-theme {
-    :root {
-        --primary-color: #0d6efd;
-        --success-color: #198754;
-        --warning-color: #ffc107;
-        --danger-color: #dc3545;
-        --info-color: #0dcaf0;
-        --light-color: #495057;
-        --dark-color: #f8f9fa;
-        --box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-
-        --bg-primary: #1a1a1a;
-        --bg-secondary: #2d2d2d;
-        --text-primary: #f8f9fa;
-        --text-secondary: #adb5bd;
-        --border-color: #495057;
-        --card-bg: #2d2d2d;
-        --input-bg: #3d3d3d;
-    }
-}
-
-/* Force dark theme when class is applied */
-body.dark-theme {
     --primary-color: #0d6efd;
     --success-color: #198754;
     --warning-color: #ffc107;
@@ -54,6 +12,7 @@ body.dark-theme {
     --dark-color: #f8f9fa;
     --box-shadow: 0 2px 10px rgba(0,0,0,0.3);
 
+    /* Dark theme as default */
     --bg-primary: #1a1a1a;
     --bg-secondary: #2d2d2d;
     --text-primary: #f8f9fa;
@@ -61,6 +20,26 @@ body.dark-theme {
     --border-color: #495057;
     --card-bg: #2d2d2d;
     --input-bg: #3d3d3d;
+}
+
+/* Light theme override (optional, for users who prefer light) */
+body.light-theme {
+    --primary-color: #007bff;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #17a2b8;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+    --box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+
+    --bg-primary: #f5f5f5;
+    --bg-secondary: #ffffff;
+    --text-primary: #343a40;
+    --text-secondary: #6c757d;
+    --border-color: #e9ecef;
+    --card-bg: #ffffff;
+    --input-bg: #ffffff;
 }
 
 * {
@@ -306,15 +285,17 @@ textarea {
     display: inline-block;
     margin: 2px 5px;
     padding: 4px 8px;
-    background-color: #e3f2fd;
+    background-color: rgba(23, 162, 184, 0.2);
     border-radius: 4px;
     font-size: 14px;
     cursor: pointer;
     transition: background-color 0.2s;
+    color: var(--text-primary);
+    border: 1px solid var(--info-color);
 }
 
 .similar-word:hover {
-    background-color: #bbdefb;
+    background-color: rgba(23, 162, 184, 0.3);
 }
 
 .notes {
@@ -438,14 +419,14 @@ textarea {
 .recommendations {
     margin-top: 15px;
     padding: 15px;
-    background-color: #fff3cd;
+    background-color: rgba(255, 193, 7, 0.1);
     border-radius: var(--border-radius);
     border-left: 4px solid var(--warning-color);
 }
 
 .recommendations h4 {
     margin-bottom: 10px;
-    color: #856404;
+    color: var(--warning-color);
 }
 
 .recommendations ul {
@@ -454,7 +435,7 @@ textarea {
 
 .recommendations li {
     margin-bottom: 5px;
-    color: #856404;
+    color: var(--text-primary);
 }
 
 /* Predictor Styles */
@@ -482,27 +463,27 @@ textarea {
 
 .prediction-card.excellent {
     border-color: var(--success-color);
-    background-color: #d4edda;
+    background-color: rgba(40, 167, 69, 0.1);
 }
 
 .prediction-card.good {
     border-color: #20c997;
-    background-color: #d1ecf1;
+    background-color: rgba(32, 201, 151, 0.1);
 }
 
 .prediction-card.moderate {
     border-color: var(--warning-color);
-    background-color: #fff3cd;
+    background-color: rgba(255, 193, 7, 0.1);
 }
 
 .prediction-card.poor {
     border-color: #fd7e14;
-    background-color: #ffe6cc;
+    background-color: rgba(253, 126, 20, 0.1);
 }
 
 .prediction-card.unknown {
     border-color: var(--danger-color);
-    background-color: #f8d7da;
+    background-color: rgba(220, 53, 69, 0.1);
 }
 
 .prediction-header {
@@ -529,10 +510,11 @@ textarea {
 .prediction-recommendation {
     margin: 15px 0;
     padding: 12px;
-    background-color: #e7f3ff;
+    background-color: rgba(23, 162, 184, 0.1);
     border-radius: 6px;
     border-left: 3px solid var(--info-color);
     font-weight: 500;
+    color: var(--text-primary);
 }
 
 .word-predictions {
@@ -584,17 +566,19 @@ textarea {
 .prediction-recommendations {
     margin-top: 15px;
     padding: 15px;
-    background-color: #fff3cd;
+    background-color: rgba(255, 193, 7, 0.1);
     border-radius: var(--border-radius);
     border-left: 4px solid var(--warning-color);
+    color: var(--text-primary);
 }
 
 .prediction-alternatives {
     margin-top: 15px;
     padding: 15px;
-    background-color: #e7f3ff;
+    background-color: rgba(23, 162, 184, 0.1);
     border-radius: var(--border-radius);
     border-left: 4px solid var(--info-color);
+    color: var(--text-primary);
 }
 
 .stats-area {
