@@ -69,10 +69,11 @@ class SpeechToPhraseValidator:
         self._current_model: Optional[ModelInfo] = None
         self._current_lexicon: Optional[LexiconWrapper] = None
 
-        # Carica il modello di default
-        default_model = self.model_manager.get_default_model()
-        if default_model:
-            self.set_model(default_model.id)
+        # Carica il primo modello disponibile
+        available_models = self.model_manager.get_models()
+        if available_models:
+            first_model_id = next(iter(available_models.keys()))
+            self.set_model(first_model_id)
 
     def set_model(self, model_id: str) -> bool:
         """Imposta il modello corrente per la validazione."""
@@ -83,8 +84,8 @@ class SpeechToPhraseValidator:
 
         self._current_model = model
 
-        # Inizializza il wrapper del lessico
-        phonetisaurus_binary = self.model_manager.get_phonetisaurus_binary()
+        # Inizializza il wrapper del lessico v1.5.9
+        phonetisaurus_binary = None  # Gestito internamente per add-on HA
         self._current_lexicon = LexiconWrapper(model, phonetisaurus_binary)
 
         _LOGGER.info(f"Set current model to: {model_id}")
@@ -92,7 +93,7 @@ class SpeechToPhraseValidator:
 
     def get_available_models(self) -> List[Dict[str, Any]]:
         """Ottiene la lista dei modelli disponibili."""
-        models = self.model_manager.get_available_models()
+        models = self.model_manager.get_models()
         return [
             {
                 "id": model.id,
@@ -101,8 +102,9 @@ class SpeechToPhraseValidator:
                 "language_family": model.language_family,
                 "description": model.description,
                 "is_current": self._current_model and model.id == self._current_model.id,
+                "is_ha_addon_optimized": getattr(model, 'is_ha_addon_optimized', False),
             }
-            for model in models
+            for model in models.values()
         ]
 
     def validate_word(self, word: str) -> WordValidationResult:
@@ -120,21 +122,18 @@ class SpeechToPhraseValidator:
             )
 
         try:
-            # Ottieni lo status della parola
-            word_status = self._current_lexicon.get_word_status(word)
+            # Verifica se la parola esiste nel lessico
+            is_known = self._current_lexicon.exists(word)
+            pronunciations = self._current_lexicon.lookup(word)
 
-            # Trova parole simili se la parola non è conosciuta
+            # Per ora non abbiamo G2P nell'add-on HA
+            guessed_pronunciation = None
             similar_words = []
-            if not word_status["is_known"]:
-                similar_words = self._current_lexicon.find_similar_words(word)
 
             # Determina lo status di validazione
-            if word_status["is_known"]:
+            if is_known and pronunciations:
                 status = ValidationStatus.KNOWN
                 confidence = 1.0
-            elif word_status["guessed_pronunciation"]:
-                status = ValidationStatus.GUESSED
-                confidence = 0.7  # Fiducia media per pronunce indovinate
             else:
                 status = ValidationStatus.UNKNOWN
                 confidence = 0.0
@@ -142,23 +141,18 @@ class SpeechToPhraseValidator:
             # Genera note
             notes = []
             if status == ValidationStatus.KNOWN:
-                notes.append(f"Parola riconosciuta con {len(word_status['pronunciations'])} pronuncia/e")
-            elif status == ValidationStatus.GUESSED:
-                notes.append("Pronuncia indovinata usando modello G2P")
+                notes.append(f"Parola riconosciuta con {len(pronunciations)} pronuncia/e")
             else:
-                notes.append("Parola non riconosciuta e pronuncia non indovinabile")
-
-            if similar_words:
-                notes.append(f"Trovate {len(similar_words)} parole simili")
+                notes.append("Parola non riconosciuta nel lessico attivo")
 
             return WordValidationResult(
                 word=word,
                 status=status,
-                is_known=word_status["is_known"],
-                pronunciations=word_status["pronunciations"],
-                guessed_pronunciation=word_status["guessed_pronunciation"],
+                is_known=is_known,
+                pronunciations=pronunciations,
+                guessed_pronunciation=guessed_pronunciation,
                 similar_words=similar_words,
-                model_id=word_status["model_id"],
+                model_id=self._current_model.id if self._current_model else "unknown",
                 confidence=confidence,
                 notes=notes
             )
@@ -284,20 +278,9 @@ class SpeechToPhraseValidator:
         return self._current_lexicon.get_statistics()
 
     def suggest_alternatives(self, word: str, max_suggestions: int = 5) -> List[Dict[str, Any]]:
-        """Suggerisce alternative per una parola."""
+        """Suggerisce alternative per una parola (limitato nell'add-on HA)."""
         if not self._current_lexicon:
             return []
 
-        similar_words = self._current_lexicon.find_similar_words(word, max_suggestions)
-
-        suggestions = []
-        for similar_word, score in similar_words:
-            word_status = self._current_lexicon.get_word_status(similar_word)
-            suggestions.append({
-                "word": similar_word,
-                "similarity_score": score,
-                "pronunciations": word_status["pronunciations"],
-                "is_known": word_status["is_known"]
-            })
-
-        return suggestions
+        # Per add-on HA: funzionalità limitata, nessun suggerimento avanzato
+        return []
