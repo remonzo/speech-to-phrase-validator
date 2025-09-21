@@ -4,6 +4,9 @@
 # Speech-to-Phrase Validator Add-on for Home Assistant
 # ==============================================================================
 
+# Source bashio for logging
+source /usr/lib/bashio/bashio
+
 bashio::log.info "Starting Speech-to-Phrase Validator..."
 
 # Check if virtual environment exists
