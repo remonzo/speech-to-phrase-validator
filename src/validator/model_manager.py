@@ -70,15 +70,20 @@ class ModelManager:
             lexicon_db_path = None
 
             if model_type == ModelType.KALDI:
-                # Per Kaldi, cerca il database del lessico
-                phones_dir = model_dir / "model" / "phones"
-                if phones_dir.exists():
-                    # Il lessico potrebbe essere in diversi formati
-                    for lexicon_file in ["lexicon.db", "lexicon.sqlite", "word_phonemes.db"]:
-                        potential_db = phones_dir / lexicon_file
-                        if potential_db.exists():
-                            lexicon_db_path = potential_db
-                            break
+                # Per Speech-to-Phrase, cerca i file di lessico
+                speech_to_phrase_lexicon = model_dir / "data" / "local" / "dict" / "lexicon.txt"
+                if speech_to_phrase_lexicon.exists():
+                    lexicon_db_path = speech_to_phrase_lexicon
+                else:
+                    # Per Kaldi tradizionale, cerca il database del lessico
+                    phones_dir = model_dir / "model" / "phones"
+                    if phones_dir.exists():
+                        # Il lessico potrebbe essere in diversi formati
+                        for lexicon_file in ["lexicon.db", "lexicon.sqlite", "word_phonemes.db"]:
+                            potential_db = phones_dir / lexicon_file
+                            if potential_db.exists():
+                                lexicon_db_path = potential_db
+                                break
 
             model_info = ModelInfo(
                 id=model_id,
@@ -97,7 +102,13 @@ class ModelManager:
 
     def _detect_model_type(self, model_dir: Path) -> Optional[ModelType]:
         """Rileva il tipo di modello dalla struttura delle directory."""
-        # Kaldi ha una struttura specifica con model/final.mdl
+        # Speech-to-Phrase Kaldi structure: graph/HCLG.fst + data/lang/
+        speech_to_phrase_graph = model_dir / "graph" / "HCLG.fst"
+        speech_to_phrase_lang = model_dir / "data" / "lang"
+        if speech_to_phrase_graph.exists() and speech_to_phrase_lang.exists():
+            return ModelType.KALDI
+
+        # Traditional Kaldi ha una struttura specifica con model/final.mdl
         kaldi_model = model_dir / "model" / "model" / "final.mdl"
         if kaldi_model.exists():
             return ModelType.KALDI

@@ -27,6 +27,7 @@ class LexiconWrapper:
         self._cache: Dict[str, Optional[List[List[str]]]] = {}
         self._word_set: Optional[Set[str]] = None
         self._db_connection: Optional[sqlite3.Connection] = None
+        self._text_pronunciations: Dict[str, List[List[str]]] = {}
 
         # Inizializza la connessione al database se disponibile
         if model_info.lexicon_db_path and model_info.lexicon_db_path.exists():
@@ -69,7 +70,16 @@ class LexiconWrapper:
                 self._cache[word] = cached_prons
                 return cached_prons
 
-        # Cerca nel database
+        # Cerca nei file di testo prima
+        text_prons: List[List[str]] = []
+        for word_var in word_vars:
+            if word_var in self._text_pronunciations:
+                text_prons.extend(self._text_pronunciations[word_var])
+                if text_prons:
+                    self._cache[word] = text_prons
+                    return text_prons
+
+        # Cerca nel database se non trovato nei file di testo
         db_prons: List[List[str]] = []
         if self._db_connection:
             for word_var in word_vars:
@@ -167,9 +177,46 @@ class LexiconWrapper:
         return similar_words[:max_results]
 
     def _load_word_set(self) -> None:
-        """Carica l'elenco delle parole dal database."""
+        """Carica l'elenco delle parole dal database o file di testo."""
         self._word_set = set()
 
+        if self.model_info.lexicon_db_path and self.model_info.lexicon_db_path.exists():
+            if str(self.model_info.lexicon_db_path).endswith('.txt'):
+                # Carica da file di testo (Speech-to-Phrase format)
+                self._load_from_text_file()
+            else:
+                # Carica da database SQLite
+                self._load_from_database()
+        else:
+            _LOGGER.warning("No lexicon source available for loading words")
+
+    def _load_from_text_file(self) -> None:
+        """Carica parole da file di testo (formato Speech-to-Phrase)."""
+        try:
+            with open(self.model_info.lexicon_db_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        # Formato: word phone1 phone2 ...
+                        parts = line.split()
+                        if parts:
+                            word = parts[0]
+                            phones = parts[1:] if len(parts) > 1 else []
+                            self._word_set.add(word)
+
+                            # Memorizza la pronuncia
+                            if word not in self._text_pronunciations:
+                                self._text_pronunciations[word] = []
+                            self._text_pronunciations[word].append(phones)
+
+            _LOGGER.info(f"Loaded {len(self._word_set)} words from lexicon text file")
+
+        except Exception as e:
+            _LOGGER.error(f"Failed to load words from text file: {e}")
+            self._word_set = set()
+
+    def _load_from_database(self) -> None:
+        """Carica parole da database SQLite."""
         if not self._db_connection:
             _LOGGER.warning("No database connection available for loading words")
             return
