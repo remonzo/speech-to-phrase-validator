@@ -131,7 +131,7 @@ class SpeechToPhraseValidator:
             similar_words = []
 
             # Determina lo status di validazione
-            if is_known and pronunciations:
+            if is_known:
                 status = ValidationStatus.KNOWN
                 confidence = 1.0
             else:
@@ -141,7 +141,10 @@ class SpeechToPhraseValidator:
             # Genera note
             notes = []
             if status == ValidationStatus.KNOWN:
-                notes.append(f"Parola riconosciuta con {len(pronunciations)} pronuncia/e")
+                if pronunciations:
+                    notes.append(f"Parola riconosciuta con {len(pronunciations)} pronuncia/e")
+                else:
+                    notes.append("Parola presente nel lessico (pronuncie non disponibili)")
             else:
                 notes.append("Parola non riconosciuta nel lessico attivo")
 
