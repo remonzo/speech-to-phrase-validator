@@ -27,6 +27,7 @@ function toggleTheme() {
 
 // Load saved theme on page load
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔧 Speech-to-Phrase Validator JavaScript loaded!');
     console.log('DOM loaded, setting up theme');
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -48,6 +49,22 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     } else {
         console.error('Theme toggle button not found');
+    }
+
+    // Test if validation functions exist
+    console.log('Functions available:');
+    console.log('- validateWord:', typeof validateWord);
+    console.log('- validateEntity:', typeof validateEntity);
+    console.log('- validateEntities:', typeof validateEntities);
+    console.log('- loadStats:', typeof loadStats);
+
+    // Auto-load stats if validator is available
+    if (document.querySelector('.card')) {
+        console.log('Starting auto stats load...');
+        setTimeout(function() {
+            console.log('Calling loadStats...');
+            loadStats();
+        }, 2000);
     }
 });
 
@@ -104,10 +121,13 @@ async function selectModel(modelId) {
 
 // Word validation
 async function validateWord() {
+    console.log('🔍 validateWord function called');
     const wordInput = document.getElementById('word-input');
     const word = wordInput.value.trim();
+    console.log('Word to validate:', word);
 
     if (!word) {
+        console.log('No word provided, returning');
         return;
     }
 
@@ -351,12 +371,18 @@ function displayBulkResult(result) {
 
 // Statistics
 async function loadStats() {
+    console.log('📊 loadStats function called');
     try {
+        console.log('Calling /stats API...');
         const stats = await apiCall('/stats');
+        console.log('Stats received:', stats);
         displayStats(stats);
     } catch (error) {
-        document.getElementById('stats-result').innerHTML =
-            `<div class="alert alert-error">Errore nel caricamento: ${error.message}</div>`;
+        console.error('Error loading stats:', error);
+        const statsResult = document.getElementById('stats-result');
+        if (statsResult) {
+            statsResult.innerHTML = `<div class="alert alert-error">Errore nel caricamento: ${error.message}</div>`;
+        }
     }
 }
 
@@ -421,11 +447,4 @@ function getStatusBadgeClass(status) {
     }
 }
 
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
-    // Auto-load stats if validator is available
-    if (document.querySelector('.card')) {
-        // Small delay to let the page render
-        setTimeout(loadStats, 1000);
-    }
-});
+// Initialize (removed duplicate DOMContentLoaded listener)
