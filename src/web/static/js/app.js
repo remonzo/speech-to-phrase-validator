@@ -1,15 +1,15 @@
 /**
- * Speech-to-Phrase Validator Frontend v1.5.11
+ * Speech-to-Phrase Validator Frontend v1.5.12
  * Ottimizzato per Add-on Home Assistant
  */
 
-console.log('🎤 Speech-to-Phrase Validator v1.5.11 - HA Add-on Optimized');
+console.log('🎤 Speech-to-Phrase Validator v1.5.12 - HA Add-on Optimized');
 
 // Configuration
 const CONFIG = {
     API_TIMEOUT: 10000,
     INGRESS_PATH: window.INGRESS_PATH || '',
-    VERSION: '1.5.11'
+    VERSION: '1.5.12'
 };
 
 // API Helper
@@ -176,7 +176,9 @@ async function validateEntity() {
             showResult(resultDiv, '❌ Impossibile validare l\'entità', 'error');
         }
     } catch (error) {
-        showResult(resultDiv, `❌ Errore: ${error.message}`, 'error');
+        console.error('Entity validation error:', error);
+        const errorMsg = error.message || error.toString() || 'Errore sconosciuto';
+        showResult(resultDiv, `❌ Errore: ${errorMsg}`, 'error');
     }
 }
 

@@ -33,8 +33,11 @@ MODELS_PATH = os.getenv("STP_MODELS_PATH", "/share/speech-to-phrase/models")
 TRAIN_PATH = os.getenv("STP_TRAIN_PATH", "/share/speech-to-phrase/train")
 TOOLS_PATH = os.getenv("STP_TOOLS_PATH", "/share/speech-to-phrase/tools")
 
-# Version constant
-VERSION = "1.5.11"
+# Import centralized version
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from version import VERSION
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -301,8 +304,15 @@ async def get_statistics():
         raise HTTPException(status_code=503, detail="Validator not initialized")
 
     base_stats = validator.get_model_statistics()
+
+    # Inizializza statistiche di base se None
     if not base_stats:
-        raise HTTPException(status_code=400, detail="No model selected")
+        base_stats = {
+            "total_words": 0,
+            "lexicon_type": "unknown",
+            "model_path": "",
+            "is_ha_addon_optimized": False
+        }
 
     # Aggiungi informazioni specifiche HA add-on
     enhanced_stats = base_stats.copy()

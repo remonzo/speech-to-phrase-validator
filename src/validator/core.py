@@ -123,8 +123,8 @@ class SpeechToPhraseValidator:
 
         try:
             # Verifica se la parola esiste nel lessico
-            is_known = self._current_lexicon.exists(word)
             pronunciations = self._current_lexicon.lookup(word)
+            is_known = len(pronunciations) > 0  # Se ha pronuncie, è conosciuta
 
             # Per ora non abbiamo G2P nell'add-on HA
             guessed_pronunciation = None
