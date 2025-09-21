@@ -1,6 +1,6 @@
 #include <tunables/global>
 
-profile speech_to_phrase_validator flags=(attach_disconnected,mediate_deleted) {
+profile addon_aa6099a0_stp_validator flags=(attach_disconnected,mediate_deleted) {
   #include <abstractions/base>
 
   # Capabilities
@@ -33,7 +33,7 @@ profile speech_to_phrase_validator flags=(attach_disconnected,mediate_deleted) {
   # Start new profile for service
   /app/run.sh cx -> speech_to_phrase_validator,
 
-  profile speech_to_phrase_validator flags=(attach_disconnected,mediate_deleted) {
+  profile addon_aa6099a0_stp_validator flags=(attach_disconnected,mediate_deleted) {
     #include <abstractions/base>
 
     # Receive signals from S6-Overlay
