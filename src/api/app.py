@@ -14,12 +14,14 @@ from pydantic import BaseModel
 # Handle both standalone and addon import scenarios
 try:
     from ..validator import SpeechToPhraseValidator
+    from ..validator.predictor import get_predictor
 except ImportError:
     # Standalone mode - adjust path
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).parent.parent))
     from validator import SpeechToPhraseValidator
+    from validator.predictor import get_predictor
 
 # Setup logging
 logging.basicConfig(
@@ -59,8 +61,9 @@ def get_ingress_path(request: Request) -> str:
 # Mount static files with proper path handling
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "web" / "static")), name="static")
 
-# Initialize validator
+# Initialize validator and predictor
 validator = None
+predictor = None
 
 # Pydantic models for API
 class WordValidationRequest(BaseModel):
@@ -76,11 +79,18 @@ class SuggestionsRequest(BaseModel):
     max_suggestions: int = 5
     model_id: Optional[str] = None
 
+# New Pydantic models for Predictor
+class WordPredictionRequest(BaseModel):
+    word: str
+
+class EntityPredictionRequest(BaseModel):
+    entity_name: str
+
 
 @app.on_event("startup")
 async def startup_event():
-    """Inizializza il validatore all'avvio."""
-    global validator
+    """Inizializza il validatore e predictor all'avvio."""
+    global validator, predictor
 
     _LOGGER.info("Starting Speech-to-Phrase Validator...")
     _LOGGER.info(f"Models path: {MODELS_PATH}")
@@ -100,6 +110,18 @@ async def startup_event():
     except Exception as e:
         _LOGGER.error(f"Failed to initialize validator: {e}")
         validator = None
+
+    # Initialize predictor
+    try:
+        _LOGGER.info("Initializing Speech-to-Phrase Predictor...")
+        predictor = await get_predictor()
+        if predictor.is_initialized():
+            _LOGGER.info("Predictor initialized successfully")
+        else:
+            _LOGGER.warning("Predictor initialization incomplete")
+    except Exception as e:
+        _LOGGER.error(f"Failed to initialize predictor: {e}")
+        predictor = None
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -281,6 +303,104 @@ async def get_statistics():
         raise HTTPException(status_code=400, detail="No model selected")
 
     return stats
+
+
+# NEW: Predictor API Endpoints
+
+@app.post("/api/predict/word")
+async def predict_word_recognition(request: WordPredictionRequest):
+    """Predici la riconoscibilità di una parola prima di aggiungerla ad Assist."""
+    if not predictor:
+        raise HTTPException(status_code=503, detail="Predictor not initialized")
+
+    if not predictor.is_initialized():
+        raise HTTPException(status_code=503, detail="Predictor not ready")
+
+    try:
+        prediction = predictor.predict_word(request.word)
+
+        return {
+            "word": prediction.word,
+            "confidence": prediction.confidence.value,
+            "confidence_score": prediction.confidence_score,
+            "in_lexicon": prediction.in_lexicon,
+            "lexicon_pronunciations": prediction.lexicon_pronunciations,
+            "g2p_available": prediction.g2p_available,
+            "g2p_pronunciation": prediction.g2p_pronunciation,
+            "g2p_confidence": prediction.g2p_confidence,
+            "similar_words": [{"word": w[0], "similarity": w[1]} for w in prediction.similar_words],
+            "recommendation": prediction.recommendation,
+            "notes": prediction.notes
+        }
+    except Exception as e:
+        _LOGGER.error(f"Error predicting word '{request.word}': {e}")
+        raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+
+
+@app.post("/api/predict/entity")
+async def predict_entity_recognition(request: EntityPredictionRequest):
+    """Predici la riconoscibilità di un'entità completa prima di aggiungerla ad Assist."""
+    if not predictor:
+        raise HTTPException(status_code=503, detail="Predictor not initialized")
+
+    if not predictor.is_initialized():
+        raise HTTPException(status_code=503, detail="Predictor not ready")
+
+    try:
+        prediction = predictor.predict_entity(request.entity_name)
+
+        return {
+            "entity_name": prediction.entity_name,
+            "overall_confidence": prediction.overall_confidence.value,
+            "overall_score": prediction.overall_score,
+            "recognition_percentage": prediction.recognition_percentage,
+            "word_predictions": [
+                {
+                    "word": wp.word,
+                    "confidence": wp.confidence.value,
+                    "confidence_score": wp.confidence_score,
+                    "in_lexicon": wp.in_lexicon,
+                    "lexicon_pronunciations": wp.lexicon_pronunciations,
+                    "g2p_available": wp.g2p_available,
+                    "g2p_pronunciation": wp.g2p_pronunciation,
+                    "g2p_confidence": wp.g2p_confidence,
+                    "similar_words": [{"word": w[0], "similarity": w[1]} for w in wp.similar_words],
+                    "recommendation": wp.recommendation,
+                    "notes": wp.notes
+                }
+                for wp in prediction.word_predictions
+            ],
+            "recommendations": prediction.recommendations,
+            "suggested_alternatives": prediction.suggested_alternatives
+        }
+    except Exception as e:
+        _LOGGER.error(f"Error predicting entity '{request.entity_name}': {e}")
+        raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+
+
+@app.get("/api/predict/stats")
+async def get_predictor_statistics():
+    """Ottiene statistiche sul predictor e modelli disponibili."""
+    if not predictor:
+        raise HTTPException(status_code=503, detail="Predictor not initialized")
+
+    try:
+        stats = await predictor.get_predictor_statistics()
+        return stats
+    except Exception as e:
+        _LOGGER.error(f"Error getting predictor statistics: {e}")
+        raise HTTPException(status_code=500, detail=f"Statistics error: {str(e)}")
+
+
+@app.get("/api/predict/health")
+async def predictor_health_check():
+    """Health check specifico per il predictor."""
+    return {
+        "predictor_available": predictor is not None,
+        "predictor_initialized": predictor.is_initialized() if predictor else False,
+        "current_model": predictor._current_model if predictor and predictor.is_initialized() else None,
+        "status": "ready" if (predictor and predictor.is_initialized()) else "not_ready"
+    }
 
 
 if __name__ == "__main__":

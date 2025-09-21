@@ -15,6 +15,10 @@ rich==13.7.0
 click==8.1.7
 pydantic==2.5.1
 
+# Predictor dependencies
+aiohttp==3.9.1
+# sqlite3 is built-in Python module
+
 # Optional for development
 pytest==7.4.4
 pytest-asyncio==0.23.2

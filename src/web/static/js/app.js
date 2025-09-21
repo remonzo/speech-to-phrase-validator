@@ -451,4 +451,287 @@ function getStatusBadgeClass(status) {
     }
 }
 
+// PREDICTOR FUNCTIONS
+
+// Word prediction
+async function predictWord() {
+    console.log('🔮 predictWord function called');
+    const wordInput = document.getElementById('predict-word-input');
+    const word = wordInput.value.trim();
+    console.log('Word to predict:', word);
+
+    if (!word) {
+        console.log('No word provided, returning');
+        return;
+    }
+
+    try {
+        const result = await apiCall('/predict/word', {
+            method: 'POST',
+            body: JSON.stringify({ word })
+        });
+
+        displayWordPrediction(result);
+    } catch (error) {
+        document.getElementById('predict-word-result').innerHTML =
+            `<div class="alert alert-error">Errore nella predizione: ${error.message}</div>`;
+    }
+}
+
+function displayWordPrediction(result) {
+    const resultDiv = document.getElementById('predict-word-result');
+
+    const confidenceIcon = getPredictionIcon(result.confidence);
+    const confidenceClass = getPredictionClass(result.confidence);
+
+    let pronunciationsHtml = '';
+    if (result.in_lexicon && result.lexicon_pronunciations && result.lexicon_pronunciations.length > 0) {
+        pronunciationsHtml = `
+            <div class="prediction-detail">
+                <strong>📚 Lessico Completo:</strong>
+                ${result.lexicon_pronunciations.map(pron =>
+                    `<span class="pronunciation">[${pron.join(' ')}]</span>`
+                ).join(' ')}
+            </div>
+        `;
+    }
+
+    let g2pHtml = '';
+    if (result.g2p_available && result.g2p_pronunciation) {
+        g2pHtml = `
+            <div class="prediction-detail">
+                <strong>🔍 Phonetisaurus G2P:</strong>
+                <span class="pronunciation">[${result.g2p_pronunciation.join(' ')}]</span>
+                <small>(confidenza: ${(result.g2p_confidence * 100).toFixed(0)}%)</small>
+            </div>
+        `;
+    }
+
+    let similarWordsHtml = '';
+    if (result.similar_words && result.similar_words.length > 0) {
+        similarWordsHtml = `
+            <div class="prediction-detail">
+                <strong>🔗 Parole Simili:</strong>
+                ${result.similar_words.map(w =>
+                    `<span class="similar-word" onclick="document.getElementById('predict-word-input').value='${w.word}'; predictWord();">
+                        ${w.word} (${(w.similarity * 100).toFixed(0)}%)
+                    </span>`
+                ).join('')}
+            </div>
+        `;
+    }
+
+    let notesHtml = '';
+    if (result.notes && result.notes.length > 0) {
+        notesHtml = `<div class="notes">${result.notes.join(' • ')}</div>`;
+    }
+
+    resultDiv.innerHTML = `
+        <div class="prediction-card ${confidenceClass}">
+            <div class="prediction-header">
+                <span class="prediction-word">${confidenceIcon} ${result.word}</span>
+                <span class="badge badge-prediction-${confidenceClass}">
+                    ${getPredictionText(result.confidence)} (${(result.confidence_score * 100).toFixed(0)}%)
+                </span>
+            </div>
+
+            ${pronunciationsHtml}
+            ${g2pHtml}
+            ${similarWordsHtml}
+
+            <div class="prediction-recommendation">
+                💡 ${result.recommendation}
+            </div>
+
+            ${notesHtml}
+        </div>
+    `;
+}
+
+// Entity prediction
+async function predictEntity() {
+    console.log('🏠 predictEntity function called');
+    const entityInput = document.getElementById('predict-entity-input');
+    const entityName = entityInput.value.trim();
+    console.log('Entity to predict:', entityName);
+
+    if (!entityName) {
+        console.log('No entity provided, returning');
+        return;
+    }
+
+    try {
+        const result = await apiCall('/predict/entity', {
+            method: 'POST',
+            body: JSON.stringify({ entity_name: entityName })
+        });
+
+        displayEntityPrediction(result);
+    } catch (error) {
+        document.getElementById('predict-entity-result').innerHTML =
+            `<div class="alert alert-error">Errore nella predizione: ${error.message}</div>`;
+    }
+}
+
+function displayEntityPrediction(result) {
+    const resultDiv = document.getElementById('predict-entity-result');
+
+    const overallIcon = getPredictionIcon(result.overall_confidence);
+    const overallClass = getPredictionClass(result.overall_confidence);
+
+    // Word breakdown
+    let wordsHtml = result.word_predictions.map(wordPred => `
+        <div class="word-prediction ${getPredictionClass(wordPred.confidence)}">
+            <div class="word-prediction-header">
+                <strong>${wordPred.word}</strong> ${getPredictionIcon(wordPred.confidence)}
+                <span class="confidence-score">${(wordPred.confidence_score * 100).toFixed(0)}%</span>
+            </div>
+            <div class="word-prediction-details">
+                ${wordPred.in_lexicon ?
+                    `📚 Nel lessico (${wordPred.lexicon_pronunciations.length} pronuncie)` :
+                    (wordPred.g2p_available ?
+                        `🔍 G2P disponibile [${wordPred.g2p_pronunciation?.join(' ') || 'N/A'}]` :
+                        '❌ Non riconoscibile'
+                    )
+                }
+            </div>
+        </div>
+    `).join('');
+
+    // Recommendations
+    let recommendationsHtml = '';
+    if (result.recommendations && result.recommendations.length > 0) {
+        recommendationsHtml = `
+            <div class="prediction-recommendations">
+                <h4>💡 Raccomandazioni</h4>
+                <ul>
+                    ${result.recommendations.map(r => `<li>${r}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    // Alternative suggestions
+    let alternativesHtml = '';
+    if (result.suggested_alternatives && result.suggested_alternatives.length > 0) {
+        alternativesHtml = `
+            <div class="prediction-alternatives">
+                <h4>🔄 Alternative Suggerite</h4>
+                <ul>
+                    ${result.suggested_alternatives.map(alt => `<li>${alt}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    resultDiv.innerHTML = `
+        <div class="prediction-card ${overallClass}">
+            <div class="prediction-summary">
+                <div>
+                    <span class="prediction-entity">${overallIcon} ${result.entity_name}</span>
+                    <br>
+                    <small>Riconoscimento: ${result.recognition_percentage.toFixed(0)}% delle parole</small>
+                </div>
+                <span class="badge badge-prediction-${overallClass}">
+                    ${getPredictionText(result.overall_confidence)} (${(result.overall_score * 100).toFixed(0)}%)
+                </span>
+            </div>
+
+            <div class="word-predictions">
+                <h4>📝 Analisi Parole</h4>
+                ${wordsHtml}
+            </div>
+
+            ${recommendationsHtml}
+            ${alternativesHtml}
+        </div>
+    `;
+}
+
+// Predictor statistics
+async function loadPredictorStats() {
+    console.log('📊 loadPredictorStats function called');
+    try {
+        console.log('Calling /predict/stats API...');
+        const stats = await apiCall('/predict/stats');
+        console.log('Predictor stats received:', stats);
+        displayPredictorStats(stats);
+    } catch (error) {
+        console.error('Error loading predictor stats:', error);
+        const statsDiv = document.getElementById('predictor-stats');
+        if (statsDiv) {
+            statsDiv.innerHTML = `<div class="alert alert-error">Errore nel caricamento: ${error.message}</div>`;
+        }
+    }
+}
+
+function displayPredictorStats(stats) {
+    const statsDiv = document.getElementById('predictor-stats');
+
+    if (stats.error) {
+        statsDiv.innerHTML = `<div class="alert alert-error">${stats.error}</div>`;
+        return;
+    }
+
+    statsDiv.innerHTML = `
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value">${stats.current_model || 'N/A'}</div>
+                <div class="stat-label">Modello Corrente</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${stats.lexicon?.total_words?.toLocaleString() || 'N/A'}</div>
+                <div class="stat-label">Parole nel Lessico Completo</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${stats.lexicon?.g2p_available ? '✅' : '❌'}</div>
+                <div class="stat-label">G2P Disponibile</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${stats.downloaded_models?.length || 0}</div>
+                <div class="stat-label">Modelli Scaricati</div>
+            </div>
+        </div>
+
+        <div style="margin-top: 20px; font-size: 14px; color: #6c757d;">
+            <strong>Cache:</strong> ${stats.lexicon?.cache_size || 0} parole •
+            <strong>Esempi:</strong> ${stats.lexicon?.sample_words?.join(', ') || 'N/A'}
+        </div>
+    `;
+}
+
+// Helper functions for predictions
+function getPredictionIcon(confidence) {
+    switch (confidence) {
+        case 'excellent': return '🌟';
+        case 'good': return '✅';
+        case 'moderate': return '🔶';
+        case 'poor': return '⚠️';
+        case 'unknown': return '❌';
+        default: return '❓';
+    }
+}
+
+function getPredictionText(confidence) {
+    switch (confidence) {
+        case 'excellent': return 'Eccellente';
+        case 'good': return 'Buono';
+        case 'moderate': return 'Discreto';
+        case 'poor': return 'Scarso';
+        case 'unknown': return 'Sconosciuto';
+        default: return 'N/A';
+    }
+}
+
+function getPredictionClass(confidence) {
+    switch (confidence) {
+        case 'excellent': return 'excellent';
+        case 'good': return 'good';
+        case 'moderate': return 'moderate';
+        case 'poor': return 'poor';
+        case 'unknown': return 'unknown';
+        default: return 'unknown';
+    }
+}
+
 // Initialize (removed duplicate DOMContentLoaded listener)

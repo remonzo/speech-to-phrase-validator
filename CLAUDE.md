@@ -3,11 +3,11 @@
 ## Project Overview
 Home Assistant add-on for validating and optimizing Speech-to-Phrase word and entity recognition. Successfully evolved from critical startup failures to a fully functional validation tool with Speech-to-Phrase integration.
 
-## Current Status: FULLY FUNCTIONAL ✅
-- **Version**: 1.5.7 (latest stable)
-- **Status**: Complete Speech-to-Phrase integration working
+## Current Status: STABLE VERSION RESTORED ✅
+- **Version**: 1.5.8 (stable, commit 267f80a)
+- **Status**: Restored to working version after fixing compatibility issues
 - **Functionality**: Model detection, word/entity validation, statistics, web UI
-- **Theme**: Dark theme active (toggle needs minor fixes)
+- **State**: Stable baseline - optimizations available but not active
 
 ## Environment Setup
 - **Home Assistant**: Running on separate physical hardware (HA OS)
@@ -64,11 +64,18 @@ speech_to_phrase_models_path: "/share/speech-to-phrase/train"  # FIXED: Correct 
 - Fixed API calls to use proper ingress prefix
 - Added JavaScript debugging and error logging
 
-### Phase 4: Model Integration Deep Dive (v1.5.7)
+### Phase 4: Model Integration Deep Dive (v1.5.7 → v1.5.8)
 **Discovery**: Speech-to-Phrase architecture understood
 - **Limited Vocabulary**: 259 words is CORRECT (only trained phrases)
 - **No G2P/Phonetisaurus**: S2P uses different approach
 - **Validation Purpose**: Check if words are in user's specific model
+
+### Phase 5: Optimization Attempts & Reset (v1.5.8 → v1.5.12 → v1.5.8)
+**Problem**: Optimization attempts introduced compatibility issues
+- **v1.5.8-v1.5.12**: Multiple attempts to improve architecture
+- **Issues**: API incompatibilities, validation errors, statistics failures
+- **Solution**: Reset to stable v1.5.8 (267f80a) baseline
+**Learning**: Stable baseline more valuable than problematic optimizations
 
 ## Technical Implementations
 
@@ -159,12 +166,72 @@ docker build -t stp-validator .
 docker run -p 8099:8099 stp-validator
 ```
 
+## ARCHITETTURA HOME ASSISTANT ADD-ON vs STANDALONE
+
+### 🏗️ **Differenze Architetturali Fondamentali**
+
+**Home Assistant Add-on Environment:**
+- **Modelli**: Privati e interni al container (`/data/models/`)
+- **Training Output**: Solo artifacts esposti all'host (`/share/speech-to-phrase/train/`)
+- **Lessico**: File di testo con parole specifiche del training (259 parole)
+- **G2P/Phonetisaurus**: Gestiti internamente, non accessibili dall'esterno
+- **Struttura**: Ottimizzata per re-training automatico
+
+**Standalone Installation:**
+- **Modelli**: Completi e accessibili (`/models/`)
+- **Lessico**: Database SQLite completo (migliaia di parole)
+- **G2P/Phonetisaurus**: Binari e modelli accessibili
+- **Struttura**: Installation tradizionale Kaldi/Speech-to-Phrase
+
+### 📊 **Principi di Funzionamento Speech-to-Phrase**
+
+**Speech-to-Phrase NON è un ASR tradizionale:**
+1. **Template-Based**: Riconosce solo frasi specifiche pre-addestrate
+2. **Finite State Transducers**: Usa FST per pattern matching efficiente
+3. **Wyoming Protocol**: Comunicazione con Home Assistant
+4. **Re-training Automatico**: Si aggiorna quando cambiano entità/aree HA
+5. **Lessico Limitato**: Solo parole presenti nei template attivi
+
+**Processo di Training:**
+1. Home Assistant invia templates (sentences.yaml)
+2. Speech-to-Phrase estrae vocabolario dai templates
+3. Crea FST ottimizzato per i pattern specifici
+4. Salva lessico minimal in `lexicon.txt` (259 parole)
+5. Container mantiene modelli base privati
+
+**Validator Purpose:**
+- Verifica se parole/entità sono nel lessico attivo dell'utente
+- NON valida pronunciabilità generale
+- Indica se Speech-to-Phrase riconoscerà quella specifica parola
+
+### 🔍 **Architettura File Speech-to-Phrase Add-on HA**
+
+```
+Container (/data/):           Host (/share/speech-to-phrase/):
+├── models/ (PRIVATE)         └── train/ (EXPOSED)
+│   ├── acoustic/                 └── it_IT-rhasspy/
+│   ├── language/                     ├── data/
+│   └── base_lexicon/                 │   ├── lang/      # Compiled
+└── tools/ (PRIVATE)                  │   └── local/dict/
+    ├── kaldi/                        │       └── lexicon.txt ← 259 words
+    └── phonetisaurus/                ├── graph/
+                                      │   └── HCLG.fst   ← Model
+                                      ├── sentences.yaml  ← Templates
+                                      └── training_info.json
+```
+
+**Validator Accede Solo a:**
+- `/share/speech-to-phrase/train/` (training output)
+- `lexicon.txt` con parole specifiche utente
+- NON ha accesso a modelli base o tools
+
 ## Important Technical Notes
 - **Speech-to-Phrase Reality**: NOT a general ASR - only recognizes trained phrases
 - **Validator Purpose**: Verify if words/entities are in user's specific model
 - **Normal Statistics**: 259 words is expected for S2P (not thousands)
 - **No G2P Needed**: S2P handles unknown words differently
 - **HA Ingress**: Critical for proper static file serving in HA environment
+- **Container Isolation**: Models/tools private, only training artifacts exposed
 
 ## Next Session Priorities
 1. **Minor**: Fix theme toggle button functionality
@@ -177,5 +244,20 @@ docker run -p 8099:8099 stp-validator
 - **Test in HA**: Local Docker testing doesn't catch Ingress issues
 - **Follow HA patterns**: Use existing add-on structures as templates
 - **Small iterations**: Frequent commits with clear version progression
+- **Stable baseline first**: Ensure working version before optimizations
+- **Container isolation**: Understand HA add-on vs standalone differences
+- **Architecture matters**: Document real implementation vs theoretical design
 
-This project successfully demonstrates Home Assistant add-on development, debugging complex integration issues, and creating a functional validation tool for Speech-to-Phrase systems.
+## Version History Summary
+- **v1.3.0-v1.5.2**: Startup and configuration fixes
+- **v1.5.3-v1.5.4**: Model detection and path corrections
+- **v1.5.5-v1.5.7**: Frontend fixes and HA Ingress support
+- **v1.5.8 (267f80a)**: Stable version with HA optimizations (CURRENT)
+- **v1.5.8-v1.5.12**: Optimization attempts with compatibility issues (REVERTED)
+
+## Current Repository State
+- **Local & GitHub**: v1.5.8 (267f80a) stable baseline
+- **Status**: Working version restored, optimizations available but not active
+- **Files**: Original working codebase + optimization files present but unused
+
+This project successfully demonstrates Home Assistant add-on development, debugging complex integration issues, creating a functional validation tool for Speech-to-Phrase systems, and the importance of maintaining stable baselines during development.
