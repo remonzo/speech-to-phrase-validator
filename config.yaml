@@ -1,5 +1,5 @@
 name: "Speech-to-Phrase Validator"
-version: "1.6.5"
+version: "1.6.6"
 slug: "stp_validator"
 description: "🔮 Tool di validazione e predizione per Speech-to-Phrase - Testa riconoscibilità prima di aggiungere ad Assist"
 url: "https://github.com/remonzo/speech-to-phrase-validator"
