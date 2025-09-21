@@ -1,454 +1,296 @@
-// Speech-to-Phrase Validator JavaScript
+/**
+ * Speech-to-Phrase Validator Frontend v1.5.8
+ * Ottimizzato per Add-on Home Assistant
+ */
 
-// Theme management
+console.log('🎤 Speech-to-Phrase Validator v1.5.8 - HA Add-on Optimized');
+
+// Configuration
+const CONFIG = {
+    API_TIMEOUT: 10000,
+    INGRESS_PATH: window.INGRESS_PATH || '',
+    VERSION: '1.5.8'
+};
+
+// API Helper
+async function apiCall(endpoint, options = {}) {
+    const url = `${CONFIG.INGRESS_PATH}/api${endpoint}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CONFIG.API_TIMEOUT);
+
+    try {
+        console.log(`🔗 API Call: ${url}`);
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('✅ API Response:', data);
+        return data;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        console.error('❌ API Error:', error);
+        throw error;
+    }
+}
+
+// Model Management
+async function loadModels() {
+    try {
+        const data = await apiCall('/models');
+        updateModelDisplay(data);
+    } catch (error) {
+        showError('Errore nel caricamento dei modelli: ' + error.message);
+    }
+}
+
+function updateModelDisplay(data) {
+    if (data.models && data.models.length > 0) {
+        const model = data.models[0]; // Primo modello disponibile
+        const statusDiv = document.getElementById('model-status');
+
+        if (statusDiv) {
+            let statusHtml = `
+                <div class="model-info-card">
+                    <h3>📊 Modello Attivo: ${model.id}</h3>
+                    <div class="model-details">
+                        <span class="badge badge-success">${model.type}</span>
+                        <span class="badge">${model.language}</span>
+                        ${model.is_ha_addon_optimized ? '<span class="badge badge-info">HA Add-on</span>' : ''}
+                    </div>
+                    <div class="model-stats">
+                        <p><strong>Lessico:</strong> ${model.lexicon_words || 'N/A'} parole
+                           ${model.is_ha_addon_optimized ? '(template personalizzati)' : '(database completo)'}</p>
+                        <p><strong>Tipo Lessico:</strong> ${model.lexicon_type || 'N/A'}</p>
+                        <p><strong>G2P:</strong> ${model.g2p_available ?
+                            '✅ Disponibile' :
+                            '⚠️ Gestito internamente (normale per add-on HA)'}</p>
+                    </div>
+                </div>
+            `;
+            statusDiv.innerHTML = statusHtml;
+        }
+    }
+}
+
+// Word Validation
+async function validateWord() {
+    const input = document.getElementById('word-input');
+    const resultDiv = document.getElementById('word-result');
+
+    if (!input || !resultDiv) return;
+
+    const word = input.value.trim();
+    if (!word) {
+        showResult(resultDiv, '⚠️ Inserisci una parola da validare', 'warning');
+        return;
+    }
+
+    showResult(resultDiv, '🔄 Validazione in corso...', 'info');
+
+    try {
+        const data = await apiCall('/validate/word', {
+            method: 'POST',
+            body: JSON.stringify({ word: word })
+        });
+
+        if (data.exists) {
+            let message = `✅ <strong>${word}</strong> è riconosciuta nel modello attivo`;
+            if (data.pronunciations && data.pronunciations.length > 0) {
+                message += `<br><small>Pronuncie: ${data.pronunciations.map(p => p.join(' ')).join(', ')}</small>`;
+            }
+            showResult(resultDiv, message, 'success');
+        } else {
+            let message = `❌ <strong>${word}</strong> non è riconosciuta nel modello attivo`;
+            if (data.suggestions && data.suggestions.length > 0) {
+                message += `<br><small>Suggerimenti: ${data.suggestions.join(', ')}</small>`;
+            }
+            message += `<br><small>💡 Aggiungi entità/aree con questo nome in Home Assistant per renderla riconoscibile</small>`;
+            showResult(resultDiv, message, 'error');
+        }
+    } catch (error) {
+        showResult(resultDiv, `❌ Errore: ${error.message}`, 'error');
+    }
+}
+
+// Entity Validation
+async function validateEntity() {
+    const input = document.getElementById('entity-input');
+    const resultDiv = document.getElementById('entity-result');
+
+    if (!input || !resultDiv) return;
+
+    const entity = input.value.trim();
+    if (!entity) {
+        showResult(resultDiv, '⚠️ Inserisci il nome di un\'entità da validare', 'warning');
+        return;
+    }
+
+    showResult(resultDiv, '🔄 Validazione entità in corso...', 'info');
+
+    try {
+        const data = await apiCall('/validate/entity', {
+            method: 'POST',
+            body: JSON.stringify({ entity_name: entity })
+        });
+
+        let message = `<strong>Entità:</strong> ${entity}<br>`;
+
+        if (data.validation_results && data.validation_results.length > 0) {
+            message += '<div class="entity-breakdown">';
+            data.validation_results.forEach(result => {
+                const icon = result.exists ? '✅' : '❌';
+                const status = result.exists ? 'riconosciuta' : 'non riconosciuta';
+                message += `<div class="word-status">${icon} <code>${result.word}</code> - ${status}</div>`;
+            });
+            message += '</div>';
+
+            const recognized = data.validation_results.filter(r => r.exists).length;
+            const total = data.validation_results.length;
+            const percentage = Math.round((recognized / total) * 100);
+
+            message += `<br><strong>Riconoscimento:</strong> ${recognized}/${total} parole (${percentage}%)`;
+
+            if (percentage === 100) {
+                message += '<br>🎉 Entità completamente riconoscibile!';
+                showResult(resultDiv, message, 'success');
+            } else if (percentage >= 50) {
+                message += '<br>⚠️ Entità parzialmente riconoscibile';
+                showResult(resultDiv, message, 'warning');
+            } else {
+                message += '<br>❌ Entità difficilmente riconoscibile';
+                showResult(resultDiv, message, 'error');
+            }
+        } else {
+            showResult(resultDiv, '❌ Impossibile validare l\'entità', 'error');
+        }
+    } catch (error) {
+        showResult(resultDiv, `❌ Errore: ${error.message}`, 'error');
+    }
+}
+
+// Statistics Loading
+async function loadStatistics() {
+    try {
+        const data = await apiCall('/statistics');
+        updateStatisticsDisplay(data);
+    } catch (error) {
+        console.error('Error loading statistics:', error);
+    }
+}
+
+function updateStatisticsDisplay(data) {
+    const statsDiv = document.getElementById('statistics-content');
+    if (!statsDiv) return;
+
+    let html = `
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h4>📚 Lessico Attivo</h4>
+                <div class="stat-value">${data.lexicon_words || 0}</div>
+                <div class="stat-label">parole riconoscibili</div>
+                ${data.is_ha_addon ? '<small>Template personalizzati HA</small>' : '<small>Database completo</small>'}
+            </div>
+            <div class="stat-card">
+                <h4>🏠 Modelli</h4>
+                <div class="stat-value">${data.model_count || 0}</div>
+                <div class="stat-label">modelli disponibili</div>
+                ${data.is_ha_addon ? '<small>Add-on ottimizzato</small>' : '<small>Installazione standalone</small>'}
+            </div>
+            <div class="stat-card">
+                <h4>🔧 Stato</h4>
+                <div class="stat-value">${data.model_type || 'N/A'}</div>
+                <div class="stat-label">tipo modello</div>
+                <small>${data.model_language || 'Lingua sconosciuta'}</small>
+            </div>
+        </div>
+    `;
+
+    if (data.ha_addon_info) {
+        html += `
+            <div class="ha-addon-info">
+                <h4>ℹ️ Informazioni Add-on Home Assistant</h4>
+                <ul>
+                    <li><strong>Configurazione:</strong> I modelli base sono gestiti internamente</li>
+                    <li><strong>Lessico:</strong> Contiene solo parole dai template addestrati</li>
+                    <li><strong>G2P:</strong> Gestione automatica parole sconosciute</li>
+                    <li><strong>Re-training:</strong> Automatico al cambio configurazione HA</li>
+                </ul>
+            </div>
+        `;
+    }
+
+    statsDiv.innerHTML = html;
+}
+
+// UI Helpers
+function showResult(element, message, type) {
+    if (!element) return;
+
+    element.className = `result-area alert alert-${type}`;
+    element.innerHTML = message;
+    element.style.display = 'block';
+}
+
+function showError(message) {
+    console.error('💥 Error:', message);
+    // Could add toast notification here
+}
+
+// Theme Management
 function toggleTheme() {
-    console.log('Toggle theme function called');
     const body = document.body;
     const isDark = body.classList.contains('dark-theme');
-
-    console.log('Current dark theme:', isDark);
 
     if (isDark) {
         body.classList.remove('dark-theme');
         localStorage.setItem('theme', 'light');
-        console.log('Switched to light theme');
     } else {
         body.classList.add('dark-theme');
         localStorage.setItem('theme', 'dark');
-        console.log('Switched to dark theme');
-    }
-
-    // Update button text
-    const button = document.getElementById('theme-toggle');
-    if (button) {
-        button.textContent = isDark ? '🌓 Tema' : '🌓 Tema';
     }
 }
 
-// Load saved theme on page load
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🔧 Speech-to-Phrase Validator JavaScript loaded!');
-    console.log('DOM loaded, setting up theme');
+function initializeTheme() {
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-    console.log('Saved theme:', savedTheme, 'Prefers dark:', prefersDark);
-
     if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
         document.body.classList.add('dark-theme');
-        console.log('Applied dark theme on load');
     }
+}
 
-    // Set up theme toggle button
-    const themeButton = document.getElementById('theme-toggle');
-    if (themeButton) {
-        console.log('Theme button found, adding click listener');
-        themeButton.addEventListener('click', function(e) {
-            e.preventDefault();
-            toggleTheme();
-        });
-    } else {
-        console.error('Theme toggle button not found');
-    }
+// Initialization
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Initializing Speech-to-Phrase Validator v1.5.8');
 
-    // Test if validation functions exist
-    console.log('Functions available:');
-    console.log('- validateWord:', typeof validateWord);
-    console.log('- validateEntity:', typeof validateEntity);
-    console.log('- validateEntities:', typeof validateEntities);
-    console.log('- loadStats:', typeof loadStats);
+    initializeTheme();
+    loadModels();
+    loadStatistics();
 
-    // Auto-load stats if validator is available
-    if (document.querySelector('.card')) {
-        console.log('Starting auto stats load...');
-        setTimeout(function() {
-            console.log('Calling loadStats...');
-            loadStats();
-        }, 2000);
-    }
+    // Auto-refresh statistics every 30 seconds
+    setInterval(loadStatistics, 30000);
+
+    console.log('✅ Speech-to-Phrase Validator ready!');
 });
 
-// Utility functions
-function showLoading() {
-    document.getElementById('loading').classList.remove('hidden');
-}
-
-function hideLoading() {
-    document.getElementById('loading').classList.add('hidden');
-}
-
-function showError(message) {
-    console.error(message);
-    // Could implement toast notifications here
-}
-
-// API calls
-async function apiCall(endpoint, options = {}) {
-    showLoading();
-    try {
-        const ingressPath = window.INGRESS_PATH || '';
-        const url = `${ingressPath}/api${endpoint}`;
-        console.log('API call to:', url);
-
-        const response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            ...options
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || `HTTP ${response.status}`);
-        }
-
-        return await response.json();
-    } catch (error) {
-        showError(`API Error: ${error.message}`);
-        throw error;
-    } finally {
-        hideLoading();
-    }
-}
-
-// Model selection
-async function selectModel(modelId) {
-    try {
-        await apiCall(`/models/${modelId}/select`, { method: 'POST' });
-        // Refresh the page to update the current model display
-        location.reload();
-    } catch (error) {
-        showError(`Failed to select model: ${error.message}`);
-    }
-}
-
-// Word validation
-async function validateWord() {
-    console.log('🔍 validateWord function called');
-    const wordInput = document.getElementById('word-input');
-    const word = wordInput.value.trim();
-    console.log('Word to validate:', word);
-
-    if (!word) {
-        console.log('No word provided, returning');
-        return;
-    }
-
-    try {
-        const result = await apiCall('/validate/word', {
-            method: 'POST',
-            body: JSON.stringify({ word })
-        });
-
-        displayWordResult(result);
-    } catch (error) {
-        document.getElementById('word-result').innerHTML =
-            `<div class="alert alert-error">Errore nella validazione: ${error.message}</div>`;
-    }
-}
-
-function displayWordResult(result) {
-    const resultDiv = document.getElementById('word-result');
-
-    const statusClass = result.status;
-    const statusIcon = getStatusIcon(result.status);
-
-    let pronunciationsHtml = '';
-    if (result.pronunciations && result.pronunciations.length > 0) {
-        pronunciationsHtml = result.pronunciations.map(pron =>
-            `<span class="pronunciation">[${pron.join(' ')}]</span>`
-        ).join(' ');
-    }
-
-    let guessedHtml = '';
-    if (result.guessed_pronunciation) {
-        guessedHtml = `<div><strong>Pronuncia stimata:</strong> <span class="pronunciation">[${result.guessed_pronunciation.join(' ')}]</span></div>`;
-    }
-
-    let similarWordsHtml = '';
-    if (result.similar_words && result.similar_words.length > 0) {
-        similarWordsHtml = `
-            <div class="similar-words">
-                <strong>Parole simili:</strong>
-                ${result.similar_words.map(w =>
-                    `<span class="similar-word" onclick="document.getElementById('word-input').value='${w.word}'; validateWord();">
-                        ${w.word} (${(w.score * 100).toFixed(0)}%)
-                    </span>`
-                ).join('')}
-            </div>
-        `;
-    }
-
-    let notesHtml = '';
-    if (result.notes && result.notes.length > 0) {
-        notesHtml = `<div class="notes">${result.notes.join('. ')}</div>`;
-    }
-
-    resultDiv.innerHTML = `
-        <div class="result-card ${statusClass}">
-            <div class="result-header">
-                <span class="result-word">${statusIcon} ${result.word}</span>
-                <span class="badge badge-${getStatusBadgeClass(result.status)}">
-                    ${getStatusText(result.status)}
-                </span>
-            </div>
-            ${pronunciationsHtml ? `<div><strong>Pronuncia:</strong> ${pronunciationsHtml}</div>` : ''}
-            ${guessedHtml}
-            ${similarWordsHtml}
-            ${notesHtml}
-            <div style="margin-top: 10px; font-size: 12px; color: #6c757d;">
-                Confidenza: ${(result.confidence * 100).toFixed(0)}% | Modello: ${result.model_id}
-            </div>
-        </div>
-    `;
-}
-
-// Entity validation
-async function validateEntity() {
-    const entityInput = document.getElementById('entity-input');
-    const entityName = entityInput.value.trim();
-
-    if (!entityName) {
-        return;
-    }
-
-    try {
-        const result = await apiCall(`/validate/entity?entity_name=${encodeURIComponent(entityName)}`, {
-            method: 'POST'
-        });
-
-        displayEntityResult(result);
-    } catch (error) {
-        document.getElementById('entity-result').innerHTML =
-            `<div class="alert alert-error">Errore nella validazione: ${error.message}</div>`;
-    }
-}
-
-function displayEntityResult(result) {
-    const resultDiv = document.getElementById('entity-result');
-
-    const statusIcon = getStatusIcon(result.overall_status);
-    const knownWords = result.words_results.filter(w => w.is_known).length;
-    const totalWords = result.words_results.length;
-
-    let wordsHtml = result.words_results.map(wordResult => `
-        <div class="word-result ${wordResult.status}">
-            <strong>${wordResult.word}</strong> ${getStatusIcon(wordResult.status)}
-            <br>
-            <small>
-                ${wordResult.is_known ?
-                    `Pronuncia: [${wordResult.pronunciations[0]?.join(' ') || 'N/A'}]` :
-                    `${wordResult.guessed_pronunciation ?
-                        `Stimata: [${wordResult.guessed_pronunciation.join(' ')}]` :
-                        'Pronuncia non disponibile'}`
-                }
-            </small>
-        </div>
-    `).join('');
-
-    let recommendationsHtml = '';
-    if (result.recommendations && result.recommendations.length > 0) {
-        recommendationsHtml = `
-            <div class="recommendations">
-                <h4>💡 Raccomandazioni</h4>
-                <ul>
-                    ${result.recommendations.map(r => `<li>${r}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-    }
-
-    resultDiv.innerHTML = `
-        <div class="result-card ${result.overall_status}">
-            <div class="entity-summary">
-                <div>
-                    <span class="result-word">${statusIcon} ${result.entity_id}</span>
-                    <br>
-                    <small>Parole riconosciute: ${knownWords}/${totalWords}</small>
-                </div>
-                <span class="badge badge-${getStatusBadgeClass(result.overall_status)}">
-                    ${getStatusText(result.overall_status)}
-                </span>
-            </div>
-
-            <div class="word-results">
-                ${wordsHtml}
-            </div>
-
-            ${recommendationsHtml}
-        </div>
-    `;
-}
-
-// Bulk entity validation
-async function validateEntities() {
-    const entitiesInput = document.getElementById('entities-input');
-    const entitiesText = entitiesInput.value.trim();
-
-    if (!entitiesText) {
-        return;
-    }
-
-    const entities = entitiesText.split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0);
-
-    if (entities.length === 0) {
-        return;
-    }
-
-    try {
-        const result = await apiCall('/validate/entities', {
-            method: 'POST',
-            body: JSON.stringify({ entities })
-        });
-
-        displayBulkResult(result);
-    } catch (error) {
-        document.getElementById('bulk-result').innerHTML =
-            `<div class="alert alert-error">Errore nella validazione: ${error.message}</div>`;
-    }
-}
-
-function displayBulkResult(result) {
-    const resultDiv = document.getElementById('bulk-result');
-
-    const score = (result.overall_score * 100).toFixed(1);
-    const scoreClass = result.overall_score >= 0.8 ? 'success' :
-                     result.overall_score >= 0.6 ? 'warning' : 'danger';
-
-    let entitiesHtml = result.entity_results.map(entity => `
-        <div class="result-card ${entity.overall_status}">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span>${getStatusIcon(entity.overall_status)} ${entity.entity_id}</span>
-                <span class="badge badge-${getStatusBadgeClass(entity.overall_status)}">
-                    ${entity.known_words}/${entity.words_count} parole
-                </span>
-            </div>
-            ${entity.recommendations.length > 0 ?
-                `<div class="notes">${entity.recommendations.slice(0, 2).join('. ')}</div>` : ''
-            }
-        </div>
-    `).join('');
-
-    let recommendationsHtml = '';
-    if (result.recommendations && result.recommendations.length > 0) {
-        recommendationsHtml = `
-            <div class="recommendations">
-                <h4>📊 Raccomandazioni Generali</h4>
-                <ul>
-                    ${result.recommendations.map(r => `<li>${r}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-    }
-
-    resultDiv.innerHTML = `
-        <div class="stats-grid" style="margin-bottom: 20px;">
-            <div class="stat-item">
-                <div class="stat-value">${score}%</div>
-                <div class="stat-label">Punteggio Complessivo</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">${result.known_entities}</div>
-                <div class="stat-label">Entità Riconosciute</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">${result.unknown_entities}</div>
-                <div class="stat-label">Entità Sconosciute</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">${result.partially_known_entities}</div>
-                <div class="stat-label">Parzialmente Note</div>
-            </div>
-        </div>
-
-        ${recommendationsHtml}
-
-        <h4>Risultati Dettagliati</h4>
-        <div style="max-height: 400px; overflow-y: auto;">
-            ${entitiesHtml}
-        </div>
-    `;
-}
-
-// Statistics
-async function loadStats() {
-    console.log('📊 loadStats function called');
-    try {
-        console.log('Calling /stats API...');
-        const stats = await apiCall('/stats');
-        console.log('Stats received:', stats);
-        displayStats(stats);
-    } catch (error) {
-        console.error('Error loading stats:', error);
-        const statsResult = document.getElementById('stats-result');
-        if (statsResult) {
-            statsResult.innerHTML = `<div class="alert alert-error">Errore nel caricamento: ${error.message}</div>`;
-        }
-    }
-}
-
-function displayStats(stats) {
-    const statsDiv = document.getElementById('stats-result');
-
-    statsDiv.innerHTML = `
-        <div class="stats-grid">
-            <div class="stat-item">
-                <div class="stat-value">${stats.total_words?.toLocaleString() || 'N/A'}</div>
-                <div class="stat-label">Parole nel Lessico</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">${stats.model_type || 'N/A'}</div>
-                <div class="stat-label">Tipo Modello</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">${stats.has_g2p_model ? '✅' : '❌'}</div>
-                <div class="stat-label">Modello G2P</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">${stats.has_phonetisaurus ? '✅' : '❌'}</div>
-                <div class="stat-label">Phonetisaurus</div>
-            </div>
-        </div>
-
-        <div style="margin-top: 20px; font-size: 14px; color: #6c757d;">
-            <strong>Modello:</strong> ${stats.model_id}<br>
-            ${stats.database_path ? `<strong>Database:</strong> ${stats.database_path}` : ''}
-        </div>
-    `;
-}
-
-// Helper functions
-function getStatusIcon(status) {
-    switch (status) {
-        case 'known': return '✅';
-        case 'unknown': return '❌';
-        case 'guessed': return '🔍';
-        case 'error': return '⚠️';
-        default: return '❓';
-    }
-}
-
-function getStatusText(status) {
-    switch (status) {
-        case 'known': return 'Riconosciuta';
-        case 'unknown': return 'Sconosciuta';
-        case 'guessed': return 'Stimata';
-        case 'error': return 'Errore';
-        default: return 'Sconosciuto';
-    }
-}
-
-function getStatusBadgeClass(status) {
-    switch (status) {
-        case 'known': return 'success';
-        case 'unknown': return 'danger';
-        case 'guessed': return 'warning';
-        case 'error': return 'danger';
-        default: return 'secondary';
-    }
-}
-
-// Initialize (removed duplicate DOMContentLoaded listener)
+// Export for global access
+window.STPValidator = {
+    validateWord,
+    validateEntity,
+    loadModels,
+    loadStatistics,
+    toggleTheme,
+    version: CONFIG.VERSION
+};

@@ -76,6 +76,10 @@ class SuggestionsRequest(BaseModel):
     max_suggestions: int = 5
     model_id: Optional[str] = None
 
+class EntityValidationRequest(BaseModel):
+    entity_name: str
+    model_id: Optional[str] = None
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -135,11 +139,36 @@ async def health_check():
 
 @app.get("/api/models")
 async def get_models():
-    """Ottiene la lista dei modelli disponibili."""
+    """Ottiene la lista dei modelli disponibili con informazioni HA add-on."""
     if not validator:
         raise HTTPException(status_code=503, detail="Validator not initialized")
 
-    return validator.get_available_models()
+    models = validator.get_available_models()
+
+    # Aggiungi informazioni specifiche per HA add-on v1.5.8
+    enhanced_models = []
+    for model in models:
+        if hasattr(validator, 'model_manager') and validator.model_manager:
+            model_info = validator.model_manager.get_model(model.get('id'))
+            if model_info:
+                enhanced_model = model.copy()
+                enhanced_model['is_ha_addon_optimized'] = getattr(model_info, 'is_ha_addon_optimized', False)
+                enhanced_model['lexicon_type'] = 'text_file' if getattr(model_info, 'is_ha_addon_optimized', False) else 'sqlite_database'
+
+                # Aggiungi statistiche lessico
+                if hasattr(validator, 'current_lexicon') and validator.current_lexicon:
+                    stats = validator.current_lexicon.get_statistics()
+                    enhanced_model['lexicon_words'] = stats.get('total_words', 0)
+                    enhanced_model['lexicon_type'] = stats.get('lexicon_type', 'unknown')
+                    enhanced_model['g2p_available'] = stats.get('phonetisaurus_available', False)
+
+                enhanced_models.append(enhanced_model)
+            else:
+                enhanced_models.append(model)
+        else:
+            enhanced_models.append(model)
+
+    return {'models': enhanced_models}
 
 
 @app.post("/api/models/{model_id}/select")
@@ -157,7 +186,7 @@ async def select_model(model_id: str):
 
 @app.post("/api/validate/word")
 async def validate_word(request: WordValidationRequest):
-    """Valida una singola parola."""
+    """Valida una singola parola con formato semplificato v1.5.8."""
     if not validator:
         raise HTTPException(status_code=503, detail="Validator not initialized")
 
@@ -169,52 +198,43 @@ async def validate_word(request: WordValidationRequest):
 
     result = validator.validate_word(request.word)
 
-    # Converte il risultato in un dict JSON-serializable
+    # Formato semplificato per compatibilità frontend v1.5.8
     return {
         "word": result.word,
-        "status": result.status.value,
-        "is_known": result.is_known,
+        "exists": result.is_known,
         "pronunciations": result.pronunciations,
-        "guessed_pronunciation": result.guessed_pronunciation,
-        "similar_words": [{"word": w, "score": s} for w, s in result.similar_words],
-        "model_id": result.model_id,
-        "confidence": result.confidence,
-        "notes": result.notes
+        "suggestions": [w for w, s in result.similar_words] if hasattr(result, 'similar_words') else []
     }
 
 
 @app.post("/api/validate/entity")
-async def validate_entity(entity_name: str, model_id: Optional[str] = None):
-    """Valida il nome di un'entità."""
+async def validate_entity(request: EntityValidationRequest):
+    """Valida il nome di un'entità con formato migliorato v1.5.8."""
     if not validator:
         raise HTTPException(status_code=503, detail="Validator not initialized")
 
     # Cambia modello se specificato
-    if model_id:
-        success = validator.set_model(model_id)
+    if request.model_id:
+        success = validator.set_model(request.model_id)
         if not success:
-            raise HTTPException(status_code=404, detail=f"Model {model_id} not found")
+            raise HTTPException(status_code=404, detail=f"Model {request.model_id} not found")
 
-    result = validator.validate_entity_name(entity_name)
+    # Semplifica validazione per compatibilità con frontend v1.5.8
+    words = request.entity_name.replace('_', ' ').replace('-', ' ').split()
+    validation_results = []
+
+    for word in words:
+        if word.strip():
+            word_result = validator.validate_word(word.strip())
+            validation_results.append({
+                'word': word_result.word,
+                'exists': word_result.is_known,
+                'pronunciations': word_result.pronunciations
+            })
 
     return {
-        "entity_id": result.entity_id,
-        "friendly_name": result.friendly_name,
-        "words_results": [
-            {
-                "word": wr.word,
-                "status": wr.status.value,
-                "is_known": wr.is_known,
-                "pronunciations": wr.pronunciations,
-                "guessed_pronunciation": wr.guessed_pronunciation,
-                "similar_words": [{"word": w, "score": s} for w, s in wr.similar_words],
-                "confidence": wr.confidence,
-                "notes": wr.notes
-            }
-            for wr in result.words_results
-        ],
-        "overall_status": result.overall_status.value,
-        "recommendations": result.recommendations
+        "entity_name": request.entity_name,
+        "validation_results": validation_results
     }
 
 
@@ -270,17 +290,49 @@ async def suggest_alternatives(request: SuggestionsRequest):
     return {"word": request.word, "suggestions": suggestions}
 
 
-@app.get("/api/stats")
+@app.get("/api/statistics")
 async def get_statistics():
-    """Ottiene statistiche sul modello corrente."""
+    """Ottiene statistiche avanzate HA add-on v1.5.8."""
     if not validator:
         raise HTTPException(status_code=503, detail="Validator not initialized")
 
-    stats = validator.get_model_statistics()
-    if not stats:
+    base_stats = validator.get_model_statistics()
+    if not base_stats:
         raise HTTPException(status_code=400, detail="No model selected")
 
-    return stats
+    # Aggiungi informazioni specifiche HA add-on
+    enhanced_stats = base_stats.copy()
+
+    if hasattr(validator, 'model_manager') and validator.model_manager:
+        model_stats = validator.model_manager.get_model_statistics()
+        enhanced_stats.update({
+            'model_count': model_stats.get('total', 0),
+            'ha_addon_models': model_stats.get('ha_addon_optimized', 0),
+            'is_ha_addon': model_stats.get('ha_addon_optimized', 0) > 0
+        })
+
+        # Aggiungi informazioni modello corrente
+        current_models = validator.get_available_models()
+        if current_models:
+            current_model = current_models[0] if current_models else {}
+            model_info = validator.model_manager.get_model(current_model.get('id', ''))
+            if model_info:
+                enhanced_stats.update({
+                    'model_type': model_info.type.value if hasattr(model_info.type, 'value') else str(model_info.type),
+                    'model_language': model_info.language,
+                    'is_ha_addon_optimized': getattr(model_info, 'is_ha_addon_optimized', False)
+                })
+
+    # Aggiungi statistiche lessico dettagliate
+    if hasattr(validator, 'current_lexicon') and validator.current_lexicon:
+        lexicon_stats = validator.current_lexicon.get_statistics()
+        enhanced_stats.update({
+            'lexicon_words': lexicon_stats.get('total_words', 0),
+            'lexicon_type': lexicon_stats.get('lexicon_type', 'unknown'),
+            'ha_addon_info': lexicon_stats.get('is_ha_addon_optimized', False)
+        })
+
+    return enhanced_stats
 
 
 if __name__ == "__main__":

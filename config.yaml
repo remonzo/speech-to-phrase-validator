@@ -1,7 +1,7 @@
 name: "Speech-to-Phrase Validator"
 version: "1.5.8"
 slug: "stp_validator"
-description: "Tool di validazione e ottimizzazione per Speech-to-Phrase che aiuta a verificare la riconoscibilità di parole ed entità"
+description: "Tool di validazione e ottimizzazione per Speech-to-Phrase che aiuta a verificare la riconoscibilità di parole ed entità. Ottimizzato per add-on Home Assistant."
 url: "https://github.com/remonzo/speech-to-phrase-validator"
 arch:
   - amd64
@@ -35,7 +35,7 @@ schema:
   log_level: list(trace|debug|info|notice|warning|error|fatal)
   speech_to_phrase_models_path: str
   speech_to_phrase_train_path: str
-  speech_to_phrase_tools_path: str
+  speech_to_phrase_tools_path: str?
   enable_cli: bool
 # Build image locally instead of pulling from registry
 # image: "ghcr.io/remonzo/addon-speech-to-phrase-validator-{arch}"
