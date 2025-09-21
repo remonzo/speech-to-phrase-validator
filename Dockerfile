@@ -2,8 +2,8 @@ ARG BUILD_FROM
 FROM $BUILD_FROM
 
 # Force rebuild by changing this arg when needed
-ARG BUILD_DATE=2024-09-20-v15
-ARG BUILD_VERSION=1.2.1
+ARG BUILD_DATE=2024-09-21-v19
+ARG BUILD_VERSION=1.4.0
 
 # Install Python and dependencies
 RUN apk add --no-cache \
@@ -43,8 +43,9 @@ RUN . /app/venv/bin/activate \
     && python -c "import fastapi; print('FastAPI OK')" \
     && python -c "import uvicorn; print('Uvicorn OK')"
 
-# Copy rootfs for s6 services
+# Copy rootfs for s6 services with correct permissions
 COPY rootfs /
+RUN chmod +x /etc/services.d/speech-to-phrase-validator/run
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
