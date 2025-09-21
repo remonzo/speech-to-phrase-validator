@@ -8,6 +8,7 @@ import sqlite3
 import logging
 import aiohttp
 import asyncio
+import gzip
 from pathlib import Path
 from typing import Dict, Optional, Any
 import json
@@ -19,28 +20,22 @@ _LOGGER = logging.getLogger(__name__)
 class SpeechToPhraseModelDownloader:
     """Downloader per modelli Speech-to-Phrase da HuggingFace."""
 
-    # Base URLs per i modelli Speech-to-Phrase
-    HUGGINGFACE_BASE = "https://huggingface.co/rhasspy/rhasspy-models/resolve/main"
+    # Base URLs per i modelli Rhasspy su GitHub
+    GITHUB_BASE = "https://github.com/rhasspy"
 
-    # Modelli disponibili e loro file
+    # Modelli disponibili e loro file (aggiornati con URL corretti)
     AVAILABLE_MODELS = {
         "it_IT-rhasspy": {
-            "lexicon.db": f"{HUGGINGFACE_BASE}/it_IT-rhasspy/lexicon.db",
-            "g2p.fst": f"{HUGGINGFACE_BASE}/it_IT-rhasspy/g2p.fst",
+            "lexicon_txt": f"{GITHUB_BASE}/it_kaldi-rhasspy/raw/master/base_dictionary.txt.gz",
+            "g2p.fst": f"{GITHUB_BASE}/it_kaldi-rhasspy/raw/master/g2p.fst.gz",
             "language": "Italian",
-            "description": "Italian Speech-to-Phrase Model"
+            "description": "Italian Rhasspy Kaldi Model"
         },
         "en_US-rhasspy": {
-            "lexicon.db": f"{HUGGINGFACE_BASE}/en_US-rhasspy/lexicon.db",
-            "g2p.fst": f"{HUGGINGFACE_BASE}/en_US-rhasspy/g2p.fst",
+            "lexicon_txt": f"{GITHUB_BASE}/en_kaldi-rhasspy/raw/master/base_dictionary.txt.gz",
+            "g2p.fst": f"{GITHUB_BASE}/en_kaldi-rhasspy/raw/master/g2p.fst.gz",
             "language": "English",
-            "description": "English Speech-to-Phrase Model"
-        },
-        "de_DE-rhasspy": {
-            "lexicon.db": f"{HUGGINGFACE_BASE}/de_DE-rhasspy/lexicon.db",
-            "g2p.fst": f"{HUGGINGFACE_BASE}/de_DE-rhasspy/g2p.fst",
-            "language": "German",
-            "description": "German Speech-to-Phrase Model"
+            "description": "English Rhasspy Kaldi Model"
         }
     }
 
@@ -63,7 +58,7 @@ class SpeechToPhraseModelDownloader:
             return False
 
         # Verifica che tutti i file necessari esistano
-        required_files = ["lexicon.db", "g2p.fst", "model_info.json"]
+        required_files = ["lexicon.db", "model_info.json"]
         for file_name in required_files:
             if not (model_path / file_name).exists():
                 return False
@@ -146,24 +141,60 @@ class SpeechToPhraseModelDownloader:
             _LOGGER.error(f"Error verifying lexicon database: {e}")
             return False
 
-    def verify_g2p_model(self, g2p_path: Path) -> bool:
-        """Verifica che il modello G2P sia valido."""
+    def create_lexicon_db_from_txt(self, txt_path: Path, db_path: Path) -> bool:
+        """Crea database SQLite dal file di testo del lessico."""
         try:
-            # Verifica che il file esista e abbia dimensione ragionevole
-            if not g2p_path.exists():
-                return False
+            _LOGGER.info(f"Creating SQLite database from {txt_path}")
 
-            file_size = g2p_path.stat().st_size
-            if file_size < 1000:  # Troppo piccolo
-                _LOGGER.error(f"G2P model file too small: {file_size} bytes")
-                return False
+            # Apri file (potrebbe essere compresso)
+            if txt_path.suffix == '.gz':
+                file_opener = lambda: gzip.open(txt_path, 'rt', encoding='utf-8')
+            else:
+                file_opener = lambda: open(txt_path, 'r', encoding='utf-8')
 
-            # TODO: Aggiungere verifica OpenFST quando implementiamo G2P
-            _LOGGER.info(f"G2P model verified: {file_size} bytes")
-            return True
+            # Crea database SQLite
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+
+            # Crea tabella lessico
+            cursor.execute('''
+                CREATE TABLE lexicon (
+                    word TEXT,
+                    pronunciation TEXT
+                )
+            ''')
+
+            # Leggi file di testo e inserisci nel database
+            word_count = 0
+            with file_opener() as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+
+                    # Parse formato: parola [tab] pronuncia_fonetica
+                    parts = line.split('\t')
+                    if len(parts) >= 2:
+                        word = parts[0].strip()
+                        pronunciation = parts[1].strip()
+
+                        cursor.execute(
+                            "INSERT INTO lexicon (word, pronunciation) VALUES (?, ?)",
+                            (word, pronunciation)
+                        )
+                        word_count += 1
+
+            # Crea indice per performance
+            cursor.execute("CREATE INDEX idx_word ON lexicon(word)")
+
+            conn.commit()
+            conn.close()
+
+            _LOGGER.info(f"Created lexicon database with {word_count} words")
+            return word_count > 100  # Sanity check
 
         except Exception as e:
-            _LOGGER.error(f"Error verifying G2P model: {e}")
+            _LOGGER.error(f"Error creating lexicon database: {e}")
             return False
 
     async def download_model(self, model_id: str, force_redownload: bool = False) -> bool:
@@ -181,31 +212,38 @@ class SpeechToPhraseModelDownloader:
 
         _LOGGER.info(f"Downloading model {model_id} to {model_path}")
 
-        # Scarica lexicon database
-        lexicon_url = model_info["lexicon.db"]
-        lexicon_path = model_path / "lexicon.db"
+        # Scarica lexicon text file (compresso)
+        lexicon_url = model_info["lexicon_txt"]
+        lexicon_txt_path = model_path / "base_dictionary.txt.gz"
 
-        if not await self.download_file(lexicon_url, lexicon_path):
-            _LOGGER.error(f"Failed to download lexicon for {model_id}")
+        if not await self.download_file(lexicon_url, lexicon_txt_path):
+            _LOGGER.error(f"Failed to download lexicon text for {model_id}")
             return False
 
-        # Verifica lexicon
-        if not self.verify_lexicon_db(lexicon_path):
-            _LOGGER.error(f"Lexicon verification failed for {model_id}")
+        # Converti in database SQLite
+        lexicon_db_path = model_path / "lexicon.db"
+        if not self.create_lexicon_db_from_txt(lexicon_txt_path, lexicon_db_path):
+            _LOGGER.error(f"Failed to create lexicon database for {model_id}")
             return False
 
-        # Scarica G2P model
-        g2p_url = model_info["g2p.fst"]
-        g2p_path = model_path / "g2p.fst"
-
-        if not await self.download_file(g2p_url, g2p_path):
-            _LOGGER.error(f"Failed to download G2P model for {model_id}")
+        # Verifica database creato
+        if not self.verify_lexicon_db(lexicon_db_path):
+            _LOGGER.error(f"Lexicon database verification failed for {model_id}")
             return False
 
-        # Verifica G2P
-        if not self.verify_g2p_model(g2p_path):
-            _LOGGER.error(f"G2P model verification failed for {model_id}")
-            return False
+        # Scarica G2P model (opzionale)
+        if "g2p.fst" in model_info:
+            g2p_url = model_info["g2p.fst"]
+            g2p_path = model_path / "g2p.fst.gz"
+
+            if await self.download_file(g2p_url, g2p_path):
+                _LOGGER.info(f"G2P model downloaded for {model_id}")
+            else:
+                _LOGGER.warning(f"G2P model download failed for {model_id} (non-critical)")
+
+        # Cleanup file temporaneo
+        if lexicon_txt_path.exists():
+            lexicon_txt_path.unlink()
 
         # Crea file info del modello
         model_info_data = {
@@ -215,15 +253,19 @@ class SpeechToPhraseModelDownloader:
             "download_date": asyncio.get_event_loop().time(),
             "files": {
                 "lexicon.db": {
-                    "size": lexicon_path.stat().st_size,
-                    "hash": self.calculate_file_hash(lexicon_path)
-                },
-                "g2p.fst": {
-                    "size": g2p_path.stat().st_size,
-                    "hash": self.calculate_file_hash(g2p_path)
+                    "size": lexicon_db_path.stat().st_size,
+                    "hash": self.calculate_file_hash(lexicon_db_path)
                 }
             }
         }
+
+        # Aggiungi info G2P se disponibile
+        g2p_path = model_path / "g2p.fst.gz"
+        if g2p_path.exists():
+            model_info_data["files"]["g2p.fst.gz"] = {
+                "size": g2p_path.stat().st_size,
+                "hash": self.calculate_file_hash(g2p_path)
+            }
 
         info_path = model_path / "model_info.json"
         with open(info_path, 'w') as f:

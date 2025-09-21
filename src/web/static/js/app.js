@@ -51,12 +51,15 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Theme toggle button not found');
     }
 
-    // Test if validation functions exist
+    // Test if all functions exist
     console.log('Functions available:');
     console.log('- validateWord:', typeof validateWord);
     console.log('- validateEntity:', typeof validateEntity);
     console.log('- validateEntities:', typeof validateEntities);
     console.log('- loadStats:', typeof loadStats);
+    console.log('- predictWord:', typeof predictWord);
+    console.log('- predictEntity:', typeof predictEntity);
+    console.log('- loadPredictorStats:', typeof loadPredictorStats);
 
     // Auto-load stats if validator is available
     if (document.querySelector('.card')) {
