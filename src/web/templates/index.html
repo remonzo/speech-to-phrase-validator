@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Speech-to-Phrase Validator</title>
-    <link href="{{ ingress_path }}/static/css/style.css" rel="stylesheet">
+    <link href="{{ ingress_path }}/static/css/style.css?v={{ version }}" rel="stylesheet">
     <script src="https://unpkg.com/htmx.org@1.9.6"></script>
     <script>
         // Global variable for ingress path
         window.INGRESS_PATH = "{{ ingress_path }}";
     </script>
-    <script src="{{ ingress_path }}/static/js/app.js"></script>
+    <script src="{{ ingress_path }}/static/js/app.js?v={{ version }}"></script>
 </head>
 <body>
     <div class="container">

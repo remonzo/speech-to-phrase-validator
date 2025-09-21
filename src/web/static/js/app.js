@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('🔧 Speech-to-Phrase Validator JavaScript loaded!');
     console.log('DOM loaded, setting up theme');
     const savedTheme = localStorage.getItem('theme');
-    const version = '1.6.9'; // Current version - force reset
+    const version = '1.7.0'; // Current version - force CSS cache bust
     const savedVersion = localStorage.getItem('app-version');
 
     console.log('Saved theme:', savedTheme, 'Version:', version, 'Saved version:', savedVersion);
