@@ -1,4 +1,4 @@
-#!/usr/bin/with-bashio
+#!/command/with-contenv bashio
 
 # ==============================================================================
 # Speech-to-Phrase Validator Add-on for Home Assistant
