@@ -33,11 +33,14 @@ MODELS_PATH = os.getenv("STP_MODELS_PATH", "/share/speech-to-phrase/models")
 TRAIN_PATH = os.getenv("STP_TRAIN_PATH", "/share/speech-to-phrase/train")
 TOOLS_PATH = os.getenv("STP_TOOLS_PATH", "/share/speech-to-phrase/tools")
 
+# Version constant
+VERSION = "1.5.9"
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Speech-to-Phrase Validator",
     description="Tool di validazione e ottimizzazione per Speech-to-Phrase",
-    version="0.1.0",
+    version=VERSION,
 )
 
 # Setup templates and static files
@@ -123,7 +126,8 @@ async def home(request: Request):
         "models": models,
         "current_model": current_model,
         "has_validator": validator is not None,
-        "ingress_path": ingress_path
+        "ingress_path": ingress_path,
+        "version": VERSION
     })
 
 
