@@ -29,7 +29,7 @@ bashio::log.info "Current directory: $(pwd)"
 bashio::log.info "Virtual environment: $VIRTUAL_ENV"
 
 # Add application directory to Python path
-export PYTHONPATH="/app/src:$PYTHONPATH"
+export PYTHONPATH="/app/src:${PYTHONPATH:-}"
 
 # Start the application
 bashio::log.info "Starting Speech-to-Phrase Validator application..."
