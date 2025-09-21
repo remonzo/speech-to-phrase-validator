@@ -2,25 +2,52 @@
 
 // Theme management
 function toggleTheme() {
+    console.log('Toggle theme function called');
     const body = document.body;
     const isDark = body.classList.contains('dark-theme');
+
+    console.log('Current dark theme:', isDark);
 
     if (isDark) {
         body.classList.remove('dark-theme');
         localStorage.setItem('theme', 'light');
+        console.log('Switched to light theme');
     } else {
         body.classList.add('dark-theme');
         localStorage.setItem('theme', 'dark');
+        console.log('Switched to dark theme');
+    }
+
+    // Update button text
+    const button = document.getElementById('theme-toggle');
+    if (button) {
+        button.textContent = isDark ? '🌓 Tema' : '🌓 Tema';
     }
 }
 
 // Load saved theme on page load
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, setting up theme');
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
+    console.log('Saved theme:', savedTheme, 'Prefers dark:', prefersDark);
+
     if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
         document.body.classList.add('dark-theme');
+        console.log('Applied dark theme on load');
+    }
+
+    // Set up theme toggle button
+    const themeButton = document.getElementById('theme-toggle');
+    if (themeButton) {
+        console.log('Theme button found, adding click listener');
+        themeButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            toggleTheme();
+        });
+    } else {
+        console.error('Theme toggle button not found');
     }
 });
 
