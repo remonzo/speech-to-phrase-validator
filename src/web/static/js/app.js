@@ -1,15 +1,15 @@
 /**
- * Speech-to-Phrase Validator Frontend v1.5.9
+ * Speech-to-Phrase Validator Frontend v1.5.10
  * Ottimizzato per Add-on Home Assistant
  */
 
-console.log('🎤 Speech-to-Phrase Validator v1.5.9 - HA Add-on Optimized');
+console.log('🎤 Speech-to-Phrase Validator v1.5.10 - HA Add-on Optimized');
 
 // Configuration
 const CONFIG = {
     API_TIMEOUT: 10000,
     INGRESS_PATH: window.INGRESS_PATH || '',
-    VERSION: '1.5.9'
+    VERSION: '1.5.10'
 };
 
 // API Helper

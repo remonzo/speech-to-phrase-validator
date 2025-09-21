@@ -34,7 +34,7 @@ TRAIN_PATH = os.getenv("STP_TRAIN_PATH", "/share/speech-to-phrase/train")
 TOOLS_PATH = os.getenv("STP_TOOLS_PATH", "/share/speech-to-phrase/tools")
 
 # Version constant
-VERSION = "1.5.9"
+VERSION = "1.5.10"
 
 # Initialize FastAPI app
 app = FastAPI(
