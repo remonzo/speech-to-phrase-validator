@@ -1,5 +1,29 @@
 // Speech-to-Phrase Validator JavaScript
 
+// Theme management
+function toggleTheme() {
+    const body = document.body;
+    const isDark = body.classList.contains('dark-theme');
+
+    if (isDark) {
+        body.classList.remove('dark-theme');
+        localStorage.setItem('theme', 'light');
+    } else {
+        body.classList.add('dark-theme');
+        localStorage.setItem('theme', 'dark');
+    }
+}
+
+// Load saved theme on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+        document.body.classList.add('dark-theme');
+    }
+});
+
 // Utility functions
 function showLoading() {
     document.getElementById('loading').classList.remove('hidden');

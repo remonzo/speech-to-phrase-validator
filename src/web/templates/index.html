@@ -11,8 +11,15 @@
 <body>
     <div class="container">
         <header>
-            <h1>🎤 Speech-to-Phrase Validator</h1>
-            <p class="subtitle">Ottimizza la riconoscibilità delle tue entità Home Assistant</p>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1>🎤 Speech-to-Phrase Validator</h1>
+                    <p class="subtitle">Ottimizza la riconoscibilità delle tue entità Home Assistant</p>
+                </div>
+                <button id="theme-toggle" class="btn btn-secondary" style="margin-left: 20px;" onclick="toggleTheme()">
+                    🌓 Tema
+                </button>
+            </div>
         </header>
 
         {% if not has_validator %}

@@ -2,8 +2,8 @@ ARG BUILD_FROM
 FROM $BUILD_FROM
 
 # Force rebuild by changing this arg when needed
-ARG BUILD_DATE=2024-09-21-v26
-ARG BUILD_VERSION=1.5.1
+ARG BUILD_DATE=2024-09-21-v27
+ARG BUILD_VERSION=1.5.2
 
 # Install Python and dependencies
 RUN apk add --no-cache \
