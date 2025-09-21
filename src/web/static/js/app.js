@@ -86,7 +86,11 @@ function showError(message) {
 async function apiCall(endpoint, options = {}) {
     showLoading();
     try {
-        const response = await fetch(`/api${endpoint}`, {
+        const ingressPath = window.INGRESS_PATH || '';
+        const url = `${ingressPath}/api${endpoint}`;
+        console.log('API call to:', url);
+
+        const response = await fetch(url, {
             headers: {
                 'Content-Type': 'application/json',
                 ...options.headers

@@ -43,6 +43,20 @@ app = FastAPI(
 # Setup templates and static files
 BASE_DIR = Path(__file__).parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "web" / "templates"))
+
+# Handle Home Assistant Ingress paths
+def get_ingress_path(request: Request) -> str:
+    """Get the ingress path prefix if available."""
+    # Check for Home Assistant ingress headers
+    ingress_path = request.headers.get("X-Ingress-Path", "")
+    if not ingress_path:
+        # Fallback: check if we're behind a proxy
+        forwarded_prefix = request.headers.get("X-Forwarded-Prefix", "")
+        if forwarded_prefix:
+            ingress_path = forwarded_prefix
+    return ingress_path.rstrip("/")
+
+# Mount static files with proper path handling
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "web" / "static")), name="static")
 
 # Initialize validator
@@ -98,11 +112,14 @@ async def home(request: Request):
         models = validator.get_available_models()
         current_model = next((m for m in models if m["is_current"]), None)
 
+    ingress_path = get_ingress_path(request)
+
     return templates.TemplateResponse("index.html", {
         "request": request,
         "models": models,
         "current_model": current_model,
-        "has_validator": validator is not None
+        "has_validator": validator is not None,
+        "ingress_path": ingress_path
     })
 
 
