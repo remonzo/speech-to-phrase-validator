@@ -1,7 +1,7 @@
 name: "Speech-to-Phrase Validator"
-version: "1.5.8"
+version: "1.6.0"
 slug: "stp_validator"
-description: "Tool di validazione e ottimizzazione per Speech-to-Phrase che aiuta a verificare la riconoscibilità di parole ed entità"
+description: "🔮 Tool di validazione e predizione per Speech-to-Phrase - Testa riconoscibilità prima di aggiungere ad Assist"
 url: "https://github.com/remonzo/speech-to-phrase-validator"
 arch:
   - amd64
