@@ -183,7 +183,11 @@ class SpeechToPhraseModelDownloader:
             except Exception as e:
                 _LOGGER.error(f"Error reading sample lines: {e}")
 
-            # Crea database SQLite
+            # Crea database SQLite (rimuovi esistente se necessario)
+            if db_path.exists():
+                _LOGGER.info(f"Removing existing database: {db_path}")
+                db_path.unlink()
+
             conn = sqlite3.connect(str(db_path))
             cursor = conn.cursor()
 
@@ -212,33 +216,35 @@ class SpeechToPhraseModelDownloader:
                     # Prova diversi formati di separazione
                     parts = None
 
-                    # Formato 1: Tab-separated
-                    if '\t' in line:
-                        parts = line.split('\t')
-                    # Formato 2: Space-separated (più di 1 spazio)
-                    elif '  ' in line:
-                        parts = line.split('  ', 1)  # Split solo al primo doppio spazio
-                    # Formato 3: Single space after word
-                    else:
-                        # Cerca primo spazio dopo una parola
-                        space_idx = line.find(' ')
-                        if space_idx > 0:
-                            parts = [line[:space_idx], line[space_idx+1:]]
+                    # Formato principale: Single space (basato sui sample logs)
+                    # Esempi dal log: 'abaco ˈa b a k o', 'casa k a s a'
+                    space_idx = line.find(' ')
+                    if space_idx > 0:
+                        word = line[:space_idx].strip()
+                        pronunciation = line[space_idx+1:].strip()
+
+                        # Salta righe con simboli speciali o entries non standard
+                        if (not word.startswith('<') and
+                            not word.startswith('!') and
+                            not word.startswith('-') and
+                            word and pronunciation and
+                            len(word) > 1):
+                            parts = [word, pronunciation]
 
                     if parts and len(parts) >= 2:
-                        word = parts[0].strip()
-                        pronunciation = parts[1].strip()
+                        final_word = parts[0].strip()
+                        final_pronunciation = parts[1].strip()
 
-                        if word and pronunciation:
+                        if final_word and final_pronunciation:
                             cursor.execute(
                                 "INSERT INTO lexicon (word, pronunciation) VALUES (?, ?)",
-                                (word, pronunciation)
+                                (final_word, final_pronunciation)
                             )
                             word_count += 1
 
                             # Log prima entry come esempio
                             if word_count == 1:
-                                _LOGGER.info(f"First entry example: '{word}' -> '{pronunciation}'")
+                                _LOGGER.info(f"First entry example: '{final_word}' -> '{final_pronunciation}'")
                     else:
                         if line_count <= 20:  # Log prime righe problematiche
                             _LOGGER.warning(f"Could not parse line {line_count}: {repr(line)}")
@@ -266,6 +272,11 @@ class SpeechToPhraseModelDownloader:
         """Crea database minimale per test quando download fallisce."""
         try:
             _LOGGER.info(f"Creating minimal test database at {db_path}")
+
+            # Rimuovi database esistente se presente
+            if db_path.exists():
+                _LOGGER.info(f"Removing existing database for fresh creation: {db_path}")
+                db_path.unlink()
 
             conn = sqlite3.connect(str(db_path))
             cursor = conn.cursor()

@@ -457,7 +457,7 @@ function getStatusBadgeClass(status) {
 // PREDICTOR FUNCTIONS
 
 // Word prediction
-async function predictWord() {
+window.predictWord = async function() {
     console.log('🔮 predictWord function called');
     const wordInput = document.getElementById('predict-word-input');
     const word = wordInput.value.trim();
@@ -552,7 +552,7 @@ function displayWordPrediction(result) {
 }
 
 // Entity prediction
-async function predictEntity() {
+window.predictEntity = async function() {
     console.log('🏠 predictEntity function called');
     const entityInput = document.getElementById('predict-entity-input');
     const entityName = entityInput.value.trim();

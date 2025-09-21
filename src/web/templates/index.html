@@ -69,8 +69,8 @@
                 <h3>📝 Predizione Parola</h3>
                 <div class="input-group">
                     <input type="text" id="predict-word-input" placeholder="Parola da testare (es: condizionatore)"
-                           onkeyup="if(event.key==='Enter') predictWord()">
-                    <button onclick="predictWord()" class="btn btn-success">🎯 Predici</button>
+                           onkeyup="if(event.key==='Enter') window.predictWord()">
+                    <button onclick="window.predictWord()" class="btn btn-success">🎯 Predici</button>
                 </div>
                 <div id="predict-word-result" class="result-area"></div>
             </div>
@@ -80,8 +80,8 @@
                 <h3>🏠 Predizione Entità</h3>
                 <div class="input-group">
                     <input type="text" id="predict-entity-input" placeholder="Nome entità da testare (es: condizionatore_mansarda)"
-                           onkeyup="if(event.key==='Enter') predictEntity()">
-                    <button onclick="predictEntity()" class="btn btn-success">🔍 Predici Entità</button>
+                           onkeyup="if(event.key==='Enter') window.predictEntity()">
+                    <button onclick="window.predictEntity()" class="btn btn-success">🔍 Predici Entità</button>
                 </div>
                 <div id="predict-entity-result" class="result-area"></div>
             </div>
@@ -90,7 +90,7 @@
             <div class="predictor-section" style="margin-top: 30px;">
                 <h3>📊 Stato Predictor</h3>
                 <div id="predictor-stats" class="stats-area">
-                    <button onclick="loadPredictorStats()" class="btn btn-secondary">📈 Carica Statistiche</button>
+                    <button onclick="window.loadPredictorStats()" class="btn btn-secondary">📈 Carica Statistiche</button>
                 </div>
             </div>
         </section>
